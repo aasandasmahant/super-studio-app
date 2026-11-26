@@ -538,6 +538,47 @@ app.get('/api/db/schemas', (req, res) => {
   });
 });
 
+/* STEP_PAYMENT_WEBHOOK_API */
+const paymentEvents = [];
+
+app.post('/api/payments/webhook', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const status = String(body.status || 'paid').trim().toLowerCase();
+  const amount = Number(body.amount);
+  const referrerId = String(body.referrerId || 'guest').trim().slice(0, 64);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return res.status(400).json({ error: 'Valid positive amount required' });
+  }
+  const commission30 = Number((amount * 0.30).toFixed(2));
+  const ev = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    provider: String(body.provider || 'generic').trim().slice(0, 40),
+    status,
+    amount: Number(amount.toFixed(2)),
+    commission30,
+    referrerId,
+    receivedAt: Date.now()
+  };
+  if (status === 'paid' && typeof referralLedger !== 'undefined' && Array.isArray(referralLedger)) {
+    referralLedger.push({
+      id: ev.id,
+      referrerId,
+      amount: ev.amount,
+      ratePercent: 30,
+      commission: commission30,
+      note: 'webhook:' + ev.provider,
+      createdAt: ev.receivedAt
+    });
+  }
+  paymentEvents.push(ev);
+  if (paymentEvents.length > 100) paymentEvents.shift();
+  return res.json({ ok: true, event: ev });
+});
+
+app.get('/api/payments/events', (req, res) => {
+  return res.json({ ok: true, count: paymentEvents.length, events: paymentEvents.slice(-20) });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
