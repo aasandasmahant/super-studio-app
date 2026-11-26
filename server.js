@@ -29,9 +29,25 @@ function saveDb() {
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
+/* STEP_3_AUTH_GUARD */
 function getUserFromReq(req) {
-  const uid = req.header('x-user-id');
-  return uid ? { id: String(uid) } : null;
+  const raw = req.header('x-user-id');
+  if (!raw) return null;
+  const clean = String(raw).trim().slice(0, 64);
+  if (!/^[a-zA-Z0-9_@.-]+$/.test(clean)) return null;
+  return { id: clean };
+}
+
+function isAdminAuthorized(req) {
+  const expected = process.env.ADMIN_SECRET;
+  if (!expected) return true;
+  const provided = req.header('x-admin-token') || '';
+  if (!provided || provided.length !== expected.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  } catch (_) {
+    return false;
+  }
 }
 
 app.get('/api/health', (req, res) => {
@@ -43,6 +59,9 @@ app.get('/api/store', (req, res) => {
 });
 
 app.post('/api/store/section', (req, res) => {
+  if (!isAdminAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const { section, payload } = req.body || {};
   if (!section) {
     return res.status(400).json({ error: 'section is required' });
