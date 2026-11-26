@@ -291,6 +291,39 @@ app.get('/api/referral/summary', (req, res) => {
   });
 });
 
+/* STEP_LANG_API */
+const CORE_LANGUAGES = [
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
+  { code: 'en', name: 'English', native: 'English' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी' },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
+  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ' },
+  { code: 'id', name: 'Indonesian', native: 'Bahasa Indonesia' }
+];
+
+app.get('/api/languages', (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const list = q
+    ? CORE_LANGUAGES.filter(l =>
+        l.code.toLowerCase().includes(q) ||
+        l.name.toLowerCase().includes(q) ||
+        l.native.toLowerCase().includes(q)
+      )
+    : CORE_LANGUAGES;
+  return res.json({
+    ok: true,
+    totalSupportedScale: '200+',
+    featuredCount: CORE_LANGUAGES.length,
+    languages: list
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

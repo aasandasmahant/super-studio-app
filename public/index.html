@@ -907,5 +907,26 @@ if (window.YasStudioAPI && !window.YasStudioAPI.login) {
 }
 </script>
 
+<!-- STEP_LANG_UI_HELPER -->
+<script>
+if (window.YasStudioAPI && !window.YasStudioAPI.setLanguage) {
+  window.YasStudioAPI.getLanguage = function() {
+    return localStorage.getItem('yas_lang') || 'hi';
+  };
+  window.YasStudioAPI.setLanguage = function(langCode) {
+    const clean = String(langCode || 'hi').trim().slice(0, 16) || 'hi';
+    localStorage.setItem('yas_lang', clean);
+    try { document.documentElement.lang = clean; } catch (_) {}
+    return { ok: true, lang: clean };
+  };
+  window.YasStudioAPI.getLanguages = async function(q) {
+    const qs = q ? ('?q=' + encodeURIComponent(q)) : '';
+    const r = await fetch('/api/languages' + qs);
+    return r.ok ? r.json() : { ok: false, languages: [] };
+  };
+  try { document.documentElement.lang = window.YasStudioAPI.getLanguage(); } catch (_) {}
+}
+</script>
+
 </body>
 </html>
