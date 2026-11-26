@@ -390,6 +390,51 @@ app.post('/api/notifications', (req, res) => {
   return res.json({ ok: true, notification: item });
 });
 
+/* STEP_AFFILIATE_FEED_API */
+const affiliateLinks = [
+  { id: 'aff-1', network: 'ClickBank', title: 'Creator Toolkit Offer', url: 'https://www.clickbank.com', commissionPercent: 30 },
+  { id: 'aff-2', network: 'ShareASale', title: 'Digital Studio Partner', url: 'https://www.shareasale.com', commissionPercent: 30 }
+];
+
+function isSafeHttpUrl(raw) {
+  try {
+    const u = new URL(String(raw || '').trim());
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch (_) {
+    return false;
+  }
+}
+
+app.get('/api/affiliate/config', (req, res) => {
+  return res.json({
+    ok: true,
+    networks: ['ClickBank', 'ShareASale', 'Digistore24', 'Flipkart'],
+    defaultCommissionPercent: 30,
+    links: affiliateLinks
+  });
+});
+
+app.post('/api/affiliate/link', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const title = String(body.title || '').trim().slice(0, 100);
+  const network = String(body.network || 'Custom').trim().slice(0, 40);
+  const url = String(body.url || '').trim().slice(0, 400);
+  if (!title || !isSafeHttpUrl(url)) {
+    return res.status(400).json({ error: 'Valid title and http/https url required' });
+  }
+  const item = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    network,
+    title,
+    url,
+    commissionPercent: 30,
+    createdAt: Date.now()
+  };
+  affiliateLinks.push(item);
+  if (affiliateLinks.length > 100) affiliateLinks.shift();
+  return res.json({ ok: true, link: item });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
