@@ -103,6 +103,41 @@ app.post('/api/communities/:id/toggle', (req, res) => {
   res.json({ ok: true, joined: comm.joinedBy.includes(uid), community: comm });
 });
 
+app.get('/api/products', (req, res) => {
+  const st = store && typeof store.getState === 'function' ? store.getState() : {};
+  const list = Array.isArray(st.products) ? st.products : (Array.isArray(db.products) ? db.products : []);
+  res.json(list);
+});
+
+app.get('/api/analytics', (req, res) => {
+  const st = store && typeof store.getState === 'function' ? store.getState() : {};
+  const productsCount = Array.isArray(st.products) ? st.products.length : (Array.isArray(db.products) ? db.products.length : 0);
+  const sharesCount = Array.isArray(db.shares) ? db.shares.length : 0;
+  res.json({
+    messages: Array.isArray(db.messages) ? db.messages.length : 0,
+    communities: Array.isArray(db.communities) ? db.communities.length : 0,
+    products: productsCount,
+    shares: sharesCount
+  });
+});
+
+app.post('/api/track-share', (req, res) => {
+  const { channel, itemId, label } = req.body || {};
+  const u = getUserFromReq(req);
+  db.shares = Array.isArray(db.shares) ? db.shares : [];
+  const entry = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    userId: u ? u.id : 'guest',
+    channel: channel ? String(channel) : 'direct',
+    itemId: itemId ? String(itemId) : '',
+    label: label ? String(label) : '',
+    time: Date.now()
+  };
+  db.shares.push(entry);
+  saveDb();
+  res.json({ ok: true, share: entry });
+});
+
 const publicDir = path.join(__dirname, 'public');
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
