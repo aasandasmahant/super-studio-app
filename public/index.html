@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YAS CHAT</title>
+<style id="theme-vars">
+  :root {
+    --bg-top: #0a2452;
+    --bg-mid: #06132b;
+    --bg-bot: #040914;
+    --card-bg: rgba(12, 26, 54, 0.94);
+    --card-border: rgba(56, 189, 248, 0.28);
+    --accent: #2563eb;
+    --accent-bright: #38bdf8;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --nav-bg: #060e20;
+  }
+
+  /* yas-ad-slots */
+  .yas-ad-banner{margin:8px 14px;background:rgba(255,255,255,0.06);border:1px solid var(--card-border);border-radius:12px;padding:8px 12px;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}
+  .yas-ad-badge{background:rgba(56,189,248,0.16);color:var(--accent-bright);border:1px solid var(--card-border);border-radius:7px;padding:2px 6px;font-size:10px;font-weight:800;white-space:nowrap}
+  .yas-ad-text{color:var(--text-main);font-weight:600;line-height:1.3;flex:1}
+  .yas-ad-link{color:var(--accent-bright);font-weight:800;text-decoration:none;font-size:11px;white-space:nowrap}
+</style>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif}
+  html,body{background:var(--bg-bot);color:var(--text-main);display:flex;justify-content:center;min-height:100vh;overscroll-behavior-y:none}
+  .screen{width:100%;max-width:430px;min-height:100vh;background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-mid) 36%,var(--bg-bot) 100%);padding-bottom:78px;position:relative;border-left:1px solid var(--card-border);border-right:1px solid var(--card-border)}
+  .top-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px}
+  .back-btn{font-size:20px;color:var(--text-main);width:28px;text-align:left;cursor:pointer}
+  .brand-row{flex:1;display:flex;align-items:center;gap:10px;padding-left:2px}
+  .fish-logo{width:74px;height:40px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 11px var(--accent-bright));flex-shrink:0}
+  .arc-fish{transform-origin:center center;animation:arcJump 2.4s ease-in-out infinite;will-change:transform}
+  @keyframes arcJump{
+    0%{transform:translate(0px,2px) rotate(10deg)}
+    30%{transform:translate(2px,-4px) rotate(-14deg)}
+    60%{transform:translate(0px,-5px) rotate(-4deg)}
+    85%{transform:translate(-1px,0px) rotate(8deg)}
+    100%{transform:translate(0px,2px) rotate(10deg)}
+  }
+  .brand-name{font-size:21px;font-weight:900;letter-spacing:0.7px;color:#ffffff;line-height:1.1}
+  .top-actions{display:flex;align-items:center;gap:10px}
+  .icon-btn{font-size:18px;color:var(--text-main);background:none;border:none;cursor:pointer;padding:2px 4px}
+  .search-wrap{margin:10px 14px 10px;background:rgba(255,255,255,0.08);border:1px solid var(--card-border);border-radius:14px;padding:9px 14px;display:flex;align-items:center;gap:10px}
+  .search-wrap input{width:100%;background:transparent;border:none;outline:none;color:var(--text-main);font-size:14px}
+  .search-wrap input::placeholder{color:var(--text-muted)}
+  .tier-bar{display:flex;gap:6px;margin:0 14px 12px;overflow-x:auto}
+  .tier-chip{background:rgba(255,255,255,0.06);border:1px solid var(--card-border);color:var(--text-muted);padding:6px 10px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .tier-chip.active{background:var(--accent);color:#fff;border-color:var(--accent-bright)}
+  .tier-heading{margin:10px 14px 8px;font-size:14px;font-weight:800;color:var(--accent-bright);letter-spacing:0.3px}
+  .card{margin:0 14px 12px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,0.38)}
+  .gallery-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:8px;border-radius:12px;scrollbar-width:none}
+  .gallery-track::-webkit-scrollbar{display:none}
+  .gallery-slide{min-width:100%;height:175px;scroll-snap-align:start;position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--card-border)}
+  .gallery-slide img{width:100%;height:100%;object-fit:cover;display:block}
+  .slide-badge{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.72);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px}
+  .prod-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-top:10px}
+  .comp-tag{font-size:11px;font-weight:800;color:var(--accent-bright);text-transform:uppercase}
+  .prod-title{font-size:15px;font-weight:800;color:#fff;margin-top:2px}
+  .prod-price{font-size:16px;font-weight:900;color:#fff;white-space:nowrap}
+  .rating-line{font-size:12px;color:#facc15;margin:6px 0;font-weight:700}
+  .detail-grid{display:grid;grid-template-columns:1fr;gap:6px;margin:8px 0;font-size:12px;line-height:1.4}
+  .detail-box{background:rgba(255,255,255,0.05);border:1px solid var(--card-border);border-radius:10px;padding:7px 9px}
+  .detail-box b{color:#fff}
+  .action-bar{display:flex;gap:8px;margin-top:10px}
+  .buy-btn{flex:2;background:var(--accent);color:#fff;border:none;border-radius:11px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;text-align:center}
+  .share-btn{flex:1;background:rgba(255,255,255,0.1);color:#fff;border:1px solid var(--card-border);border-radius:11px;padding:10px;font-size:12px;font-weight:700;cursor:pointer}
+  .copy-hint{font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center}
+  .zoom-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:80;flex-direction:column;justify-content:space-between;padding:14px}
+  .zoom-modal.open{display:flex}
+  .zoom-head{display:flex;justify-content:space-between;align-items:center}
+  .zoom-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+  .zoom-stage img{max-width:100%;max-height:76vh;transition:transform 0.15s ease;border-radius:12px}
+  .zoom-controls{display:flex;justify-content:center;gap:12px}
+  .z-btn{background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
+  .toast-bar{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;border:1px solid var(--accent-bright);padding:8px 14px;border-radius:12px;font-size:12px;font-weight:700;z-index:90;display:none}
+  .panel{display:none}.panel.active{display:block}
+  .msg-box{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+  .msg-item{background:rgba(255,255,255,0.06);border:1px solid var(--card-border);border-radius:12px;padding:9px 12px;font-size:13px}
+  .msg-item small{display:block;color:var(--accent-bright);font-size:11px;margin-bottom:2px}
+  .chat-row{display:flex;gap:8px}
+  .inp{width:100%;background:rgba(0,0,0,0.28);border:1px solid var(--card-border);border-radius:10px;padding:9px 12px;color:var(--text-main);outline:none;font-size:13px;margin-bottom:8px}
+  .chat-row .inp{margin-bottom:0}
+  .shop-btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+  .joined-btn{background:#15803d;color:#fff;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}
+  .tab-pills{display:flex;gap:8px;margin-bottom:12px}
+  .pill-btn{flex:1;padding:8px;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,0.05);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer}
+  .pill-btn.active{background:var(--accent);color:#fff}
+  .status-txt{font-size:12px;color:var(--accent-bright);margin-top:6px;min-height:16px}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+  .stat-box{background:rgba(255,255,255,0.06);border:1px solid var(--card-border);border-radius:12px;padding:10px}
+  .stat-box b{display:block;font-size:17px;color:#fff}
+  .stat-box span{font-size:11px;color:var(--text-muted)}
+  .comm-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--card-border)}
+  .comm-item:last-child{border-bottom:none}
+  .drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:50;justify-content:flex-end}
+  .drawer-backdrop.open{display:flex}
+  .drawer-panel{width:82%;max-width:340px;height:100%;background:var(--bg-mid);border-left:1px solid var(--card-border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+  .drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .sec-title{font-size:15px;font-weight:700;color:#fff}
+  .menu-link{width:100%;text-align:left;background:rgba(255,255,255,0.06);border:1px solid var(--card-border);color:var(--text-main);padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
+  .info-box{background:rgba(255,255,255,0.05);border:1px solid var(--card-border);border-radius:10px;padding:10px;font-size:12px;color:var(--text-muted);line-height:1.45}
+  .theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .theme-chip{padding:8px 10px;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,0.06);color:var(--text-main);font-size:12px;font-weight:700;cursor:pointer;text-align:left}
+  .theme-chip.active{border-color:#fff;background:var(--accent)}
+  .bottom-nav{position:fixed;bottom:0;width:100%;max-width:430px;background:var(--nav-bg);border-top:1px solid var(--card-border);display:flex;justify-content:space-around;padding:8px 0 10px;z-index:30}
+  .nav-btn{background:none;border:none;color:var(--text-muted);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;cursor:pointer;flex:1}
+  .nav-btn.active{color:#ffffff;font-weight:700}
+  .nav-btn span.ico{font-size:17px}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="top-bar">
+    
+    <div class="brand-row">
+      <div class="fish-logo">
+        <svg class="arc-fish" width="72" height="38" viewBox="0 0 140 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="yasRefFish" x1="14" y1="54" x2="120" y2="14" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0284c7"/>
+              <stop offset="50%" stop-color="#38bdf8"/>
+              <stop offset="100%" stop-color="#e0f2fe"/>
+            </linearGradient>
+          </defs>
+          <path d="M22 52C34 26 68 12 106 20L124 14L114 26L126 32L106 32C82 34 56 44 38 62L28 66L32 54L20 56Z" fill="url(#yasRefFish)" stroke="#bae6fd" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M58 21L74 9L84 22" fill="#7dd3fc" stroke="#e0f2fe" stroke-width="1.5"/>
+          <path d="M56 38L66 49L74 37" fill="#38bdf8"/>
+          <path d="M98 22L109 25L98 28" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="107" cy="21" r="3" fill="#ffffff"/>
+          <circle cx="107.5" cy="21" r="1.4" fill="#040914"/>
+        </svg>
+      </div>
+      <div class="brand-name">YAS CHAT</div>
+    </div>
+    <div class="top-actions">
+      
+      <button class="icon-btn" onclick="toggleDrawer(true)">☰</button>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <span>🔍</span>
+    <input id="searchInput" type="text" placeholder="Search product or brand..." oninput="loadProducts()">
+  </div>
+
+  
+  <div id="ad-below-search" class="yas-ad-banner" data-ad-slot="below_search"><span class="yas-ad-badge">AD</span><span class="yas-ad-text">Sponsored Banner • Partner Offer</span><a class="yas-ad-link" href="#ad-below-search">View ›</a></div>
+  <div class="tier-bar">
+    <button id="tier-all" class="tier-chip active" onclick="setTier('all')">All (Low→Med→High)</button>
+    <button id="tier-low" class="tier-chip" onclick="setTier('low')">Low (5)</button>
+    <button id="tier-medium" class="tier-chip" onclick="setTier('medium')">Medium (5)</button>
+    <button id="tier-high" class="tier-chip" onclick="setTier('high')">High (5)</button>
+  </div>
+
+  <div id="panel-home" class="panel active">
+    <div id="homeCatalog"></div>
+  </div>
+
+  <div id="panel-chats" class="panel">
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:8px">YAS CHAT Messages</div>
+      <div class="msg-box" id="msgList"></div>
+      <form class="chat-row" onsubmit="sendMessage(event)">
+        <input id="msgText" class="inp" type="text" placeholder="मैसेज लिखें...">
+        <button class="shop-btn" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="panel-community" class="panel">
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:8px">Join Community</div>
+      <div id="communityList"></div>
+      <div id="ad-community-footer" class="yas-ad-banner" style="margin:10px 0 0" data-ad-slot="community_footer"><span class="yas-ad-badge">AD</span><span class="yas-ad-text">Community Partner Slot</span><a class="yas-ad-link" href="#ad-community-footer">Explore ›</a></div>
+    </div>
+  </div>
+
+  <div id="panel-discover" class="panel">
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:8px">All Products</div>
+      <div id="discoverCatalog"></div>
+    </div>
+  </div>
+
+  <div id="panel-analytics" class="panel">
+    <div class="card">
+      <div class="sec-title">Share Link Analytics</div>
+      <p style="font-size:12px;color:var(--text-muted);margin:6px 0 10px">
+        बिना रिफ़ंड वाली पक्की खरीद पर कमाई जुड़ती है; रिफ़ंड होने पर कमाई शून्य रहेगी।
+      </p>
+      <div id="analyticsSummary"></div>
+    </div>
+    <div class="card">
+      <div class="sec-title">Buying By Country / Region</div>
+      <div id="analyticsCountries" style="margin-top:8px;font-size:13px"></div>
+      <div id="ad-analytics-bottom" class="yas-ad-banner" style="margin:12px 0 0" data-ad-slot="analytics_bottom"><span class="yas-ad-badge">AD</span><span class="yas-ad-text">Analytics Sponsor Slot</span><a class="yas-ad-link" href="#ad-analytics-bottom">Details ›</a></div>
+    </div>
+  </div>
+
+  <div id="panel-profile" class="panel">
+    <div class="card">
+      <div class="sec-title">YAS CHAT Account</div>
+      <p id="userBadge" style="font-size:13px;color:var(--text-muted);margin:8px 0 12px">Guest Mode • Not Logged In</p>
+      <div id="authForms">
+        <div class="tab-pills">
+          <button id="pillLogin" class="pill-btn active" onclick="switchAuthTab('login')">Login</button>
+          <button id="pillSignup" class="pill-btn" onclick="switchAuthTab('signup')">Signup</button>
+        </div>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <input id="loginEmail" class="inp" type="email" placeholder="Email Address" required>
+          <input id="loginPass" class="inp" type="password" placeholder="Password" required>
+          <button class="shop-btn" type="submit">Login</button>
+        </form>
+        <form id="signupForm" style="display:none" onsubmit="handleSignup(event)">
+          <input id="signupUsername" class="inp" type="text" placeholder="Username (e.g. aasan_user)" required>
+          <input id="signupEmail" class="inp" type="email" placeholder="Email Address" required>
+          <input id="signupPass" class="inp" type="password" placeholder="Password (min 4 chars)" required>
+          <button class="shop-btn" type="submit">Create Account</button>
+        </form>
+      </div>
+      <div id="loggedInBox" style="display:none">
+        <button class="shop-btn" onclick="handleLogout()">Logout</button>
+      </div>
+      <div id="authStatus" class="status-txt"></div>
+    </div>
+  </div>
+
+  <div id="panel-settings" class="panel">
+    <div class="card">
+      <div class="sec-title">Settings (8 Themes)</div>
+      <p style="font-size:12px;color:var(--text-muted);margin:6px 0 8px">अपनी पसंद की थीम चुनें:</p>
+      <div class="theme-grid" id="themeGrid"></div>
+    </div>
+    <div class="card">
+      <div class="sec-title">Language & Preferences</div>
+      <div id="currentLangInfo" class="status-txt"></div>
+    </div>
+  </div>
+
+  <div id="drawer" class="drawer-backdrop" onclick="if(event.target.id==='drawer')toggleDrawer(false)">
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <div class="sec-title">Menu</div>
+        <button class="icon-btn" onclick="toggleDrawer(false)">✕</button>
+      </div>
+      <label style="font-size:12px;color:var(--text-muted)">200+ Country & Language</label>
+      <select id="langSelect" class="inp" onchange="changeLanguage(this.value)"></select>
+      <button class="menu-link" id="drawerAuthBtn" onclick="drawerAuthAction()">Login / Signup</button>
+      <button class="menu-link" onclick="toggleDrawer(false);openPanel('analytics')">📊 Share & Purchase Analytics</button>
+      <button class="menu-link" onclick="toggleDrawer(false);toggleInfo('contest')">🏆 Contest</button>
+      <button class="menu-link" onclick="toggleDrawer(false);openPanel('settings')">🎨 Settings (8 Themes)</button>
+      <button class="menu-link" onclick="toggleDrawer(false);toggleInfo('about')">ℹ️ About</button>
+      <button class="menu-link" onclick="toggleDrawer(false);toggleInfo('terms')">📄 Terms & Conditions</button>
+      <button class="menu-link" onclick="toggleDrawer(false);toggleInfo('disclaimer')">⚠️ Disclaimer</button>
+      <div id="drawerInfoBox" class="info-box" style="display:none"></div>
+    </div>
+  </div>
+
+  <div id="zoomModal" class="zoom-modal">
+    <div class="zoom-head">
+      <span id="zoomCaption" style="font-size:13px;font-weight:700">Full Screen View</span>
+      <button class="z-btn" onclick="closeZoom()">✕ Close</button>
+    </div>
+    <div id="zoomStage" class="zoom-stage">
+      <img id="zoomImg" src="" alt="Zoom Preview">
+    </div>
+    <div class="zoom-controls">
+      <button class="z-btn" onclick="stepZoom(-0.35)">－ Zoom Out</button>
+      <button class="z-btn" onclick="resetZoom()">1x Reset</button>
+      <button class="z-btn" onclick="stepZoom(0.35)">＋ Zoom In</button>
+    </div>
+  </div>
+
+  <div id="toastBar" class="toast-bar"></div>
+
+  <div class="bottom-nav">
+    <button id="btn-home" class="nav-btn active" onclick="openPanel('home')"><span class="ico">🏠</span><span>Home</span></button>
+    <button id="btn-chats" class="nav-btn" onclick="openPanel('chats')"><span class="ico">💬</span><span>Chats</span></button>
+    <button id="btn-community" class="nav-btn" onclick="openPanel('community')"><span class="ico">👥</span><span>Community</span></button>
+    <button id="btn-discover" class="nav-btn" onclick="openPanel('discover')"><span class="ico">🛍️</span><span>Products</span></button>
+    <button id="btn-analytics" class="nav-btn" onclick="openPanel('analytics')"><span class="ico">📊</span><span>Analytics</span></button>
+  </div>
+</div>
+
+<script>
+const THEMES = [
+  { id: 'ocean', name: '1. Ocean Blue', top: '#0a2452', mid: '#06132b', bot: '#040914', card: 'rgba(12,26,54,0.94)', border: 'rgba(56,189,248,0.28)', accent: '#2563eb', bright: '#38bdf8', text: '#f8fafc', muted: '#94a3b8', nav: '#060e20' },
+  { id: 'emerald', name: '2. Emerald Dark', top: '#063329', mid: '#041f19', bot: '#02120f', card: 'rgba(6,38,31,0.94)', border: 'rgba(52,211,153,0.28)', accent: '#059669', bright: '#34d399', text: '#ecfdf5', muted: '#6ee7b7', nav: '#031713' },
+  { id: 'royal', name: '3. Royal Purple', top: '#2b1055', mid: '#180933', bot: '#0c041a', card: 'rgba(36,14,72,0.94)', border: 'rgba(192,132,252,0.28)', accent: '#7c3aed', bright: '#c084fc', text: '#faf5ff', muted: '#d8b4fe', nav: '#110624' },
+  { id: 'sunset', name: '4. Sunset Amber', top: '#451a03', mid: '#270f04', bot: '#140702', card: 'rgba(56,22,7,0.94)', border: 'rgba(251,191,36,0.28)', accent: '#d97706', bright: '#fbbf24', text: '#fffbeb', muted: '#fcd34d', nav: '#1c0b03' },
+  { id: 'crimson', name: '5. Crimson Night', top: '#450a18', mid: '#26050d', bot: '#120206', card: 'rgba(58,9,21,0.94)', border: 'rgba(251,113,133,0.28)', accent: '#e11d48', bright: '#fb7185', text: '#fff1f2', muted: '#fda4af', nav: '#190308' },
+  { id: 'slate', name: '6. Slate Steel', top: '#1e293b', mid: '#0f172a', bot: '#070b14', card: 'rgba(23,33,51,0.94)', border: 'rgba(148,163,184,0.28)', accent: '#475569', bright: '#94a3b8', text: '#f8fafc', muted: '#cbd5e1', nav: '#0b1120' },
+  { id: 'cyan', name: '7. Cyber Cyan', top: '#083344', mid: '#041c26', bot: '#020e14', card: 'rgba(7,46,61,0.94)', border: 'rgba(34,211,238,0.28)', accent: '#0891b2', bright: '#22d3ee', text: '#ecfeff', muted: '#67e8f9', nav: '#03151c' },
+  { id: 'light', name: '8. Daylight Clean', top: '#dbeafe', mid: '#eff6ff', bot: '#f8fafc', card: '#ffffff', border: 'rgba(37,99,235,0.22)', accent: '#2563eb', bright: '#0284c7', text: '#0f172a', muted: '#475569', nav: '#ffffff' }
+];
+
+const COUNTRIES_200 = [
+  'Afghanistan (Pashto/Dari)','Albania (Albanian)','Algeria (Arabic)','Andorra (Catalan)','Angola (Portuguese)','Antigua and Barbuda (English)','Argentina (Spanish)','Armenia (Armenian)','Australia (English)','Austria (German)',
+  'Azerbaijan (Azerbaijani)','Bahamas (English)','Bahrain (Arabic)','Bangladesh (Bengali)','Barbados (English)','Belarus (Belarusian)','Belgium (Dutch/French/German)','Belize (English)','Benin (French)','Bhutan (Dzongkha)',
+  'Bolivia (Spanish)','Bosnia and Herzegovina (Bosnian)','Botswana (English)','Brazil (Portuguese)','Brunei (Malay)','Bulgaria (Bulgarian)','Burkina Faso (French)','Burundi (Kirundi)','Cabo Verde (Portuguese)','Cambodia (Khmer)',
+  'Cameroon (English/French)','Canada (English/French)','Central African Republic (French)','Chad (French/Arabic)','Chile (Spanish)','China (Mandarin)','Colombia (Spanish)','Comoros (Comorian/Arabic/French)','Congo Republic (French)','Costa Rica (Spanish)',
+  'Croatia (Croatian)','Cuba (Spanish)','Cyprus (Greek/Turkish)','Czechia (Czech)','DR Congo (French)','Denmark (Danish)','Djibouti (French/Arabic)','Dominica (English)','Dominican Republic (Spanish)','Ecuador (Spanish)',
+  'Egypt (Arabic)','El Salvador (Spanish)','Equatorial Guinea (Spanish)','Eritrea (Tigrinya)','Estonia (Estonian)','Eswatini (English/Swati)','Ethiopia (Amharic)','Fiji (English)','Finland (Finnish)','France (French)',
+  'Gabon (French)','Gambia (English)','Georgia (Georgian)','Germany (German)','Ghana (English)','Greece (Greek)','Grenada (English)','Guatemala (Spanish)','Guinea (French)','Guinea-Bissau (Portuguese)',
+  'Guyana (English)','Haiti (French/Haitian Creole)','Honduras (Spanish)','Hungary (Hungarian)','Iceland (Icelandic)','India - Hindi (हिन्दी)','India - English (English)','Indonesia (Indonesian)','Iran (Persian)','Iraq (Arabic)',
+  'Ireland (English/Irish)','Israel (Hebrew)','Italy (Italian)','Jamaica (English)','Japan (Japanese)','Jordan (Arabic)','Kazakhstan (Kazakh)','Kenya (Swahili/English)','Kiribati (English)','Kuwait (Arabic)',
+  'Kyrgyzstan (Kyrgyz)','Laos (Lao)','Latvia (Latvian)','Lebanon (Arabic)','Lesotho (Sesotho/English)','Liberia (English)','Libya (Arabic)','Liechtenstein (German)','Lithuania (Lithuanian)','Luxembourg (Luxembourgish)',
+  'Madagascar (Malagasy)','Malawi (English/Chichewa)','Malaysia (Malay)','Maldives (Dhivehi)','Mali (Bambara/French)','Malta (Maltese/English)','Marshall Islands (English)','Mauritania (Arabic)','Mauritius (English/French)','Mexico (Spanish)',
+  'Micronesia (English)','Moldova (Romanian)','Monaco (French)','Mongolia (Mongolian)','Montenegro (Montenegrin)','Morocco (Arabic)','Mozambique (Portuguese)','Myanmar (Burmese)','Namibia (English)','Nauru (Nauruan/English)',
+  'Nepal (Nepali)','Netherlands (Dutch)','New Zealand (English)','Nicaragua (Spanish)','Niger (French)','Nigeria (English)','North Korea (Korean)','North Macedonia (Macedonian)','Norway (Norwegian)','Oman (Arabic)',
+  'Pakistan (Urdu/English)','Palau (Palauan/English)','Palestine (Arabic)','Panama (Spanish)','Papua New Guinea (English)','Paraguay (Spanish)','Peru (Spanish)','Philippines (Filipino/English)','Poland (Polish)','Portugal (Portuguese)',
+  'Qatar (Arabic)','Romania (Romanian)','Russia (Russian)','Rwanda (Kinyarwanda)','Saint Kitts and Nevis (English)','Saint Lucia (English)','Saint Vincent and the Grenadines (English)','Samoa (Samoan/English)','San Marino (Italian)','Sao Tome and Principe (Portuguese)',
+  'Saudi Arabia (Arabic)','Senegal (French)','Serbia (Serbian)','Seychelles (English/French)','Sierra Leone (English)','Singapore (English/Malay/Mandarin/Tamil)','Slovakia (Slovak)','Slovenia (Slovenian)','Solomon Islands (English)','Somalia (Somali)',
+  'South Africa (Zulu/English)','South Korea (Korean)','South Sudan (English)','Spain (Spanish)','Sri Lanka (Sinhala/Tamil)','Sudan (Arabic)','Suriname (Dutch)','Sweden (Swedish)','Switzerland (German/French/Italian)','Syria (Arabic)',
+  'Taiwan (Mandarin)','Tajikistan (Tajik)','Tanzania (Swahili)','Thailand (Thai)','Timor-Leste (Tetum/Portuguese)','Togo (French)','Tonga (Tongan/English)','Trinidad and Tobago (English)','Tunisia (Arabic)','Turkey (Turkish)',
+  'Turkmenistan (Turkmen)','Tuvalu (Tuvaluan/English)','Uganda (English/Swahili)','Ukraine (Ukrainian)','United Arab Emirates (Arabic)','United Kingdom (English)','United States (English)','Uruguay (Spanish)','Uzbekistan (Uzbek)','Vanuatu (Bislama/English/French)',
+  'Vatican City (Italian/Latin)','Venezuela (Spanish)','Vietnam (Vietnamese)','Yemen (Arabic)','Zambia (English)','Zimbabwe (English)'
+];
+
+let authToken = localStorage.getItem('yas_token') || '';
+let currentUser = null;
+let currentTier = 'all';
+let zoomScale = 1;
+let lastPinchDist = 0;
+
+function showToast(msg) {
+  const el = document.getElementById('toastBar');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2200);
+}
+
+function copyText(text, label) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  showToast((label || 'Link') + ' copied!');
+}
+
+function attachLongPressCopy(el, getLinkFn, title) {
+  let timer = null;
+  let moved = false;
+  const start = () => {
+    moved = false;
+    timer = setTimeout(() => {
+      if (!moved) copyText(getLinkFn(), `${title} affiliate link`);
+    }, 550);
+  };
+  const cancel = () => { clearTimeout(timer); };
+  el.addEventListener('touchstart', start, { passive: true });
+  el.addEventListener('touchmove', () => { moved = true; cancel(); }, { passive: true });
+  el.addEventListener('touchend', cancel);
+  el.addEventListener('touchcancel', cancel);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', cancel);
+  el.addEventListener('mouseleave', cancel);
+}
+
+function openZoom(src, caption) {
+  zoomScale = 1;
+  document.getElementById('zoomImg').src = src;
+  document.getElementById('zoomImg').style.transform = 'scale(1)';
+  document.getElementById('zoomCaption').textContent = caption || 'Full Screen View';
+  document.getElementById('zoomModal').classList.add('open');
+}
+
+function closeZoom() {
+  document.getElementById('zoomModal').classList.remove('open');
+}
+
+function stepZoom(delta) {
+  zoomScale = Math.min(4, Math.max(1, Number((zoomScale + delta).toFixed(2))));
+  document.getElementById('zoomImg').style.transform = `scale(${zoomScale})`;
+}
+
+function resetZoom() {
+  zoomScale = 1;
+  document.getElementById('zoomImg').style.transform = 'scale(1)';
+}
+
+const zoomStage = document.getElementById('zoomStage');
+zoomStage.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: true });
+zoomStage.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2 && lastPinchDist > 0) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const ratio = dist / lastPinchDist;
+    zoomScale = Math.min(4, Math.max(1, Number((zoomScale * ratio).toFixed(2))));
+    document.getElementById('zoomImg').style.transform = `scale(${zoomScale})`;
+    lastPinchDist = dist;
+  }
+}, { passive: true });
+
+function applyTheme(themeId) {
+  const t = THEMES.find(x => x.id === themeId) || THEMES[0];
+  localStorage.setItem('yas_theme', t.id);
+  const root = document.documentElement;
+  root.style.setProperty('--bg-top', t.top);
+  root.style.setProperty('--bg-mid', t.mid);
+  root.style.setProperty('--bg-bot', t.bot);
+  root.style.setProperty('--card-bg', t.card);
+  root.style.setProperty('--card-border', t.border);
+  root.style.setProperty('--accent', t.accent);
+  root.style.setProperty('--accent-bright', t.bright);
+  root.style.setProperty('--text-main', t.text);
+  root.style.setProperty('--text-muted', t.muted);
+  root.style.setProperty('--nav-bg', t.nav);
+  renderThemes();
+}
+
+function renderThemes() {
+  const active = localStorage.getItem('yas_theme') || 'ocean';
+  document.getElementById('themeGrid').innerHTML = THEMES.map(t => `
+    <button class="theme-chip ${t.id === active ? 'active' : ''}" onclick="applyTheme('${t.id}')">${t.name}</button>
+  `).join('');
+}
+
+function initCountries() {
+  const sel = document.getElementById('langSelect');
+  const saved = localStorage.getItem('yas_lang') || 'India - Hindi (हिन्दी)';
+  sel.innerHTML = COUNTRIES_200.map(c => `<option value="${c.replace(/"/g,'&quot;')}" ${c === saved ? 'selected' : ''}>${c}</option>`).join('');
+  document.getElementById('currentLangInfo').textContent = 'Selected: ' + saved;
+}
+
+function changeLanguage(val) {
+  localStorage.setItem('yas_lang', val);
+  document.getElementById('currentLangInfo').textContent = 'Selected: ' + val;
+}
+
+function toggleDrawer(open) {
+  document.getElementById('drawer').classList.toggle('open', open);
+}
+
+function toggleInfo(type) {
+  const box = document.getElementById('drawerInfoBox');
+  const map = {
+    contest: '<b>Contest:</b> अपडेटेड लिंक शेयर करके वैध खरीदारी लाने वाले सक्रिय यूज़र्स के लिए अभियान।',
+    about: '<b>About YAS CHAT:</b> कम बजट से हाई बजट तक प्रोडक्ट्स की जानकारी, चैट और शेयर लिंक एनालिटिक्स।',
+    terms: '<b>Terms & Conditions:</b> रिफ़ंड या रद्द होने वाले ऑर्डर पर कमीशन मान्य नहीं होगा।',
+    disclaimer: '<b>Disclaimer:</b> बाहरी अफ़िलिएट लिंक, कीमत और रिफ़ंड नियम संबंधित विक्रेता/गेटवे के अधीन हैं।'
+  };
+  box.style.display = 'block';
+  box.innerHTML = map[type] || '';
+}
+
+function drawerAuthAction() {
+  toggleDrawer(false);
+  openPanel('profile');
+}
+
+function openPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const p = document.getElementById('panel-' + name);
+  if (p) p.classList.add('active');
+  const b = document.getElementById('btn-' + name);
+  if (b) b.classList.add('active');
+  if (name === 'chats') loadMessages();
+  if (name === 'community') loadCommunities();
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'profile') refreshAuth();
+}
+
+function setTier(tier) {
+  currentTier = tier;
+  ['all', 'low', 'medium', 'high'].forEach(t => {
+    document.getElementById('tier-' + t).classList.toggle('active', t === tier);
+  });
+  loadProducts();
+}
+
+function buildAffiliateLink(p) {
+  const who = currentUser ? currentUser.username : (localStorage.getItem('yas_share_user') || 'guest');
+  const raw = p.link || (window.location.origin + window.location.pathname + '?prod=' + encodeURIComponent(p.id));
+  const sep = raw.includes('?') ? '&' : '?';
+  return `${raw}${sep}ref=${encodeURIComponent(who)}`;
+}
+
+async function shareProduct(p) {
+  const who = currentUser ? currentUser.username : (prompt('अपना username लिखें ताकि खरीदारी आपके एनालिटिक्स में गिने:', localStorage.getItem('yas_share_user') || '') || 'guest');
+  if (!currentUser && who && who !== 'guest') localStorage.setItem('yas_share_user', who);
+  const shareUrl = buildAffiliateLink(p);
+  await fetch('/api/track-share', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-auth-token': authToken },
+    body: JSON.stringify({ productId: p.id, username: who })
+  });
+  if (navigator.share) {
+    try { await navigator.share({ title: `${p.company} - ${p.title}`, url: shareUrl }); } catch (e) {}
+  }
+  copyText(shareUrl, 'Share link');
+}
+
+function renderCatalog(items, containerId) {
+  const order = ['low', 'medium', 'high'];
+  const labels = {
+    low: 'Low Range Products (5)',
+    medium: 'Medium Range Products (5)',
+    high: 'High Range Products (5)'
+  };
+  const groups = currentTier === 'all' ? order : [currentTier];
+  let html = '';
+
+  for (const g of groups) {
+    const list = items.filter(x => String(x.tier || 'medium').toLowerCase() === g).slice(0, 5);
+    if (!list.length) continue;
+    html += `<div class="tier-heading">${labels[g] || g.toUpperCase()}</div>`;
+    for (const p of list) {
+      const imgs = Array.isArray(p.images) && p.images.length ? p.images : [];
+      html += `
+        <div class="card" data-pid="${p.id}">
+          <div class="gallery-track">
+            ${imgs.map((src, i) => `
+              <div class="gallery-slide">
+                <img src="${src}" alt="${(p.title || '').replace(/"/g,'&quot;')}" loading="lazy" onclick="openZoom(this.src, '${(p.company + ' - ' + p.title + ' (' + (i+1) + '/5)').replace(/'/g,"\\'")}')">
+                <span class="slide-badge">← Swipe ${i+1}/5 → • Tap Zoom</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="prod-top">
+            <div>
+              <div class="comp-tag">${p.company || 'Brand'} • ${String(p.tier || '').toUpperCase()}</div>
+              <div class="prod-title">${p.title}</div>
+            </div>
+            <div class="prod-price">$${p.price}</div>
+          </div>
+          <div class="rating-line">★ ${p.rating || '4.5'} • ${p.accuratePercent || '90%'} सही बता रहे हैं • ${p.benefitsCount || 3} मुख्य फायदे</div>
+          <div class="detail-grid">
+            <div class="detail-box"><b>सही क्या है (Pros):</b> ${p.pros || '-'}</div>
+            <div class="detail-box"><b>गलत क्या है (Cons):</b> ${p.cons || '-'}</div>
+            <div class="detail-box"><b>किसको लेना चाहिए:</b> ${p.buyFor || '-'}</div>
+            <div class="detail-box"><b>किसको नहीं लेना चाहिए:</b> ${p.skipFor || '-'}</div>
+          </div>
+          <div class="action-bar">
+            <button class="buy-btn" data-role="buy">Buy Now (Affiliate)</button>
+            <button class="share-btn" data-role="share">Share</button>
+          </div>
+          <div class="copy-hint">Long press Buy Now या Share पर दबाने से affiliate link कॉपी होगा</div>
+        </div>
+      `;
+    }
+  }
+
+  if (!html) html = '<div class="card"><div class="info-box">कोई प्रोडक्ट नहीं मिला।</div></div>';
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = html;
+
+  for (const p of items) {
+    const card = wrap.querySelector(`[data-pid="${p.id}"]`);
+    if (!card) continue;
+    const buyBtn = card.querySelector('[data-role="buy"]');
+    const shareBtn = card.querySelector('[data-role="share"]');
+    const linkGetter = () => buildAffiliateLink(p);
+    buyBtn.onclick = () => {
+      const url = linkGetter();
+      if (url && url.startsWith('http')) window.open(url, '_blank', 'noopener,noreferrer');
+      else copyText(url, 'Affiliate link');
+    };
+    shareBtn.onclick = () => shareProduct(p);
+    attachLongPressCopy(buyBtn, linkGetter, p.title);
+    attachLongPressCopy(shareBtn, linkGetter, p.title);
+  }
+}
+
+async function loadProducts() {
+  const q = document.getElementById('searchInput').value || '';
+  const res = await fetch(`/api/products?q=${encodeURIComponent(q)}&tier=${encodeURIComponent(currentTier)}`);
+  const items = await res.json();
+  renderCatalog(items, 'homeCatalog');
+  renderCatalog(items, 'discoverCatalog');
+}
+
+async function loadCommunities() {
+  const res = await fetch('/api/communities', { headers: { 'x-auth-token': authToken } });
+  const list = await res.json();
+  document.getElementById('communityList').innerHTML = list.map(c => `
+    <div class="comm-item">
+      <div>
+        <div class="prod-title">${c.name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${c.members} members</div>
+      </div>
+      <button class="${c.joined ? 'joined-btn' : 'shop-btn'}" onclick="toggleCommunity('${c.id}')">${c.joined ? 'Joined' : 'Join'}</button>
+    </div>
+  `).join('');
+}
+
+async function toggleCommunity(id) {
+  await fetch(`/api/communities/${encodeURIComponent(id)}/toggle`, {
+    method: 'POST',
+    headers: { 'x-auth-token': authToken }
+  });
+  loadCommunities();
+}
+
+async function loadAnalytics() {
+  const qUser = currentUser ? currentUser.username : (localStorage.getItem('yas_share_user') || '');
+  const res = await fetch('/api/analytics?username=' + encodeURIComponent(qUser), {
+    headers: { 'x-auth-token': authToken }
+  });
+  const d = await res.json();
+  if (!d.username) {
+    document.getElementById('analyticsSummary').innerHTML = `<div class="info-box">${d.pendingOrRefundedNote}</div>`;
+    document.getElementById('analyticsCountries').innerHTML = '';
+    return;
+  }
+  document.getElementById('analyticsSummary').innerHTML = `
+    <div style="font-size:12px;color:var(--accent-bright);margin-bottom:6px">User: @${d.username}</div>
+    <div class="stat-grid">
+      <div class="stat-box"><b>${d.sharesCount}</b><span>Link Shares</span></div>
+      <div class="stat-box"><b>${d.validPurchases}</b><span>Valid Purchases (No Refund)</span></div>
+      <div class="stat-box"><b>$${d.earnedAmount}</b><span>Confirmed Earnings</span></div>
+      <div class="stat-box"><b>${d.refundedPurchases}</b><span>Refunded (No Payout)</span></div>
+    </div>
+  `;
+  if (!d.countries.length) {
+    document.getElementById('analyticsCountries').innerHTML = '<div style="color:var(--text-muted)">अभी तक किसी देश से पक्की खरीदारी दर्ज नहीं हुई है।</div>';
+  } else {
+    document.getElementById('analyticsCountries').innerHTML = d.countries.map(c => `
+      <div class="comm-item">
+        <span>🌍 ${c.country}</span>
+        <span><b>${c.purchases}</b> buys • $${c.amount}</span>
+      </div>
+    `).join('');
+  }
+}
+
+async function loadMessages() {
+  const res = await fetch('/api/messages');
+  const data = await res.json();
+  document.getElementById('msgList').innerHTML = data.map(m => `
+    <div class="msg-item"><div><small>@${m.sender}</small>${m.text}</div></div>
+  `).join('');
+}
+
+async function sendMessage(e) {
+  e.preventDefault();
+  const inp = document.getElementById('msgText');
+  if (!inp.value.trim()) return;
+  await fetch('/api/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-auth-token': authToken },
+    body: JSON.stringify({ text: inp.value, sender: currentUser ? currentUser.username : 'Guest' })
+  });
+  inp.value = '';
+  loadMessages();
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('pillLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('pillSignup').classList.toggle('active', tab === 'signup');
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('signupForm').style.display = tab === 'signup' ? 'block' : 'none';
+}
+
+async function refreshAuth() {
+  const res = await fetch('/api/auth/me', { headers: { 'x-auth-token': authToken } });
+  const data = await res.json();
+  currentUser = data.user || null;
+  const drawerAuthBtn = document.getElementById('drawerAuthBtn');
+  if (currentUser) {
+    document.getElementById('userBadge').textContent = `@${currentUser.username} • ${currentUser.email}`;
+    document.getElementById('authForms').style.display = 'none';
+    document.getElementById('loggedInBox').style.display = 'block';
+    drawerAuthBtn.textContent = `Logout (@${currentUser.username})`;
+    drawerAuthBtn.onclick = async () => { await handleLogout(); toggleDrawer(false); };
+  } else {
+    document.getElementById('userBadge').textContent = 'Guest Mode • Not Logged In';
+    document.getElementById('authForms').style.display = 'block';
+    document.getElementById('loggedInBox').style.display = 'none';
+    drawerAuthBtn.textContent = 'Login / Signup';
+    drawerAuthBtn.onclick = () => { toggleDrawer(false); openPanel('profile'); };
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: document.getElementById('loginEmail').value,
+      password: document.getElementById('loginPass').value
+    })
+  });
+  const d = await res.json();
+  if (!res.ok) return (document.getElementById('authStatus').textContent = d.error);
+  authToken = d.token;
+  localStorage.setItem('yas_token', authToken);
+  document.getElementById('authStatus').textContent = 'Logged in as @' + d.user.username;
+  refreshAuth();
+}
+
+async function handleSignup(e) {
+  e.preventDefault();
+  const res = await fetch('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: document.getElementById('signupUsername').value,
+      email: document.getElementById('signupEmail').value,
+      password: document.getElementById('signupPass').value
+    })
+  });
+  const d = await res.json();
+  if (!res.ok) return (document.getElementById('authStatus').textContent = d.error);
+  authToken = d.token;
+  localStorage.setItem('yas_token', authToken);
+  document.getElementById('authStatus').textContent = 'Account created: @' + d.user.username;
+  refreshAuth();
+}
+
+async function handleLogout() {
+  await fetch('/api/auth/logout', { method: 'POST', headers: { 'x-auth-token': authToken } });
+  authToken = '';
+  localStorage.removeItem('yas_token');
+  document.getElementById('authStatus').textContent = 'Logged out';
+  refreshAuth();
+}
+
+applyTheme(localStorage.getItem('yas_theme') || 'ocean');
+initCountries();
+loadProducts();
+loadMessages();
+refreshAuth();
+</script>
+<script>
+  // yas-ad-slots in-feed injector
+  const __origRenderCatalog = typeof renderCatalog === "function" ? renderCatalog : null;
+  if (__origRenderCatalog) {
+    window.renderCatalog = function(items, containerId) {
+      __origRenderCatalog(items, containerId);
+      const wrap = document.getElementById(containerId);
+      if (!wrap || wrap.querySelector(".yas-infeed-ad")) return;
+      const headings = wrap.querySelectorAll(".tier-heading");
+      const targetHeading = headings.length > 1 ? headings[headings.length - 1] : null;
+      const adEl = document.createElement("div");
+      adEl.className = "yas-ad-banner yas-infeed-ad";
+      adEl.setAttribute("data-ad-slot", "in_feed_catalog");
+      adEl.innerHTML = '<span class="yas-ad-badge">AD</span><span class="yas-ad-text">Featured Deals & Offers</span><a class="yas-ad-link" href="#' + containerId + '">Check ›</a>';
+      if (targetHeading) {
+        targetHeading.parentNode.insertBefore(adEl, targetHeading);
+      } else {
+        wrap.appendChild(adEl);
+      }
+    };
+    if (typeof loadProducts === "function") { loadProducts(); }
+  }
+</script>
+
+<style>
+  html, body, .screen { scroll-snap-type: y proximity; }
+  .card { scroll-snap-align: start; }
+  .lazy-scroll-ad {
+    margin: 10px 14px;
+    min-height: 54px;
+    border-radius: 12px;
+    border: 1px dashed var(--card-border);
+    background: rgba(255,255,255,0.03);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    opacity: 0.45;
+    transition: opacity 0.25s ease, background 0.25s ease;
+  }
+  .lazy-scroll-ad.loaded {
+    opacity: 1;
+    border-style: solid;
+    background: rgba(255,255,255,0.08);
+  }
+</style>
+<script>
+(function(){
+  function ensureScrollAds(){
+    const targets = ["homeCatalog", "discoverCatalog"];
+    for (const id of targets){
+      const wrap = document.getElementById(id);
+      if (!wrap) continue;
+      const cards = wrap.querySelectorAll(".card");
+      cards.forEach((card, idx) => {
+        if ((idx + 1) % 3 === 0){
+          const next = card.nextElementSibling;
+          if (!next || !next.classList.contains("lazy-scroll-ad")){
+            const ad = document.createElement("div");
+            ad.className = "lazy-scroll-ad";
+            ad.dataset.adLoaded = "0";
+            ad.innerHTML = "<span style='color:var(--text-muted);font-size:11px'>Scroll up to load ad...</span>";
+            card.parentNode.insertBefore(ad, card.nextSibling);
+          }
+        }
+      });
+    }
+  }
+  function loadVisibleAds(){
+    const vh = window.innerHeight || 800;
+    document.querySelectorAll(".lazy-scroll-ad").forEach(ad => {
+      if (ad.dataset.adLoaded === "1") return;
+      const rect = ad.getBoundingClientRect();
+      if (rect.top < vh - 20 && rect.bottom > 20){
+        ad.dataset.adLoaded = "1";
+        ad.classList.add("loaded");
+        ad.innerHTML = "<span style='background:rgba(56,189,248,0.18);color:var(--accent-bright);padding:2px 6px;border-radius:6px;font-size:10px;font-weight:800'>AD</span><span style='flex:1;font-weight:600'>Demo Sponsored Banner • Partner Offer</span><a href='#top' style='color:var(--accent-bright);font-weight:800;text-decoration:none;font-size:11px'>View ›</a>";
+      }
+    });
+  }
+  const origRender = window.renderCatalog;
+  if (typeof origRender === "function"){
+    window.renderCatalog = function(items, containerId){
+      origRender(items, containerId);
+      ensureScrollAds();
+      loadVisibleAds();
+    };
+  }
+  window.addEventListener("scroll", loadVisibleAds, { passive: true });
+  document.addEventListener("scroll", loadVisibleAds, { passive: true, capture: true });
+  setTimeout(() => { ensureScrollAds(); loadVisibleAds(); }, 300);
+})();
+</script>
+
+</body>
+</html>
