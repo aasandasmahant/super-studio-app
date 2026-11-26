@@ -664,6 +664,47 @@ if (!hasTranslateRoute) {
   });
 }
 
+/* STEP_MEDIA_UPLOAD_API */
+const pathMod = require('path');
+const uploadDir = pathMod.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const uploadedMedia = [];
+
+app.post('/api/media/upload', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const rawName = String(body.filename || 'media.bin').trim();
+  const safeName = rawName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || 'media.bin';
+  const mimeType = String(body.mimeType || 'application/octet-stream').trim().slice(0, 80);
+  const b64 = String(body.base64Data || '').trim();
+  if (!b64) {
+    return res.status(400).json({ error: 'base64Data is required' });
+  }
+  const cleanB64 = b64.includes(',') ? b64.split(',').pop() : b64;
+  const buf = Buffer.from(cleanB64, 'base64');
+  if (!buf.length || buf.length > 2 * 1024 * 1024) {
+    return res.status(400).json({ error: 'Invalid or too large file (max 2MB)' });
+  }
+  const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+  const storedName = id + '_' + safeName;
+  const fullPath = pathMod.join(uploadDir, storedName);
+  fs.writeFileSync(fullPath, buf);
+  const item = {
+    id,
+    filename: safeName,
+    storedName,
+    mimeType,
+    sizeBytes: buf.length,
+    uploadedAt: Date.now()
+  };
+  uploadedMedia.push(item);
+  if (uploadedMedia.length > 100) uploadedMedia.shift();
+  return res.json({ ok: true, media: item });
+});
+
+app.get('/api/media/list', (req, res) => {
+  return res.json({ ok: true, count: uploadedMedia.length, items: uploadedMedia.slice(-20) });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
