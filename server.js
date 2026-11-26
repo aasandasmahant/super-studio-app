@@ -138,6 +138,16 @@ app.post('/api/track-share', (req, res) => {
   res.json({ ok: true, share: entry });
 });
 
+/* STEP_2_DISCOVERY */
+try {
+  const discMod = require('./modules/product-discovery/server/productDiscoveryRoute.js');
+  const discRouter = discMod && (discMod.router || discMod.default || discMod);
+  if (typeof discRouter === 'function') {
+    app.use('/api/discovery', discRouter);
+    app.use('/api/product-discovery', discRouter);
+  }
+} catch (_) {}
+
 const publicDir = path.join(__dirname, 'public');
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
