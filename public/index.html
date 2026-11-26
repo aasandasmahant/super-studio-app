@@ -965,5 +965,75 @@ if (window.YasStudioAPI && !window.YasStudioAPI.getNotifications) {
 }
 </script>
 
+<!-- STEP_STUDIO_UI_PANEL -->
+<section id="yas-studio-panel" style="margin:16px;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f8fafc;font-family:sans-serif;">
+  <h3 style="margin:0 0 10px 0;font-size:16px;">Super Studio Controls</h3>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+    <input id="yas-login-user" type="text" placeholder="Username" style="padding:6px 8px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#fff;" />
+    <button id="yas-login-btn" type="button" style="padding:6px 10px;border-radius:6px;border:0;background:#2563eb;color:#fff;cursor:pointer;">Login</button>
+    <select id="yas-lang-select" style="padding:6px 8px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#fff;">
+      <option value="hi">हिन्दी (hi)</option>
+      <option value="en">English (en)</option>
+      <option value="bn">বাংলা (bn)</option>
+      <option value="mr">मराठी (mr)</option>
+      <option value="id">Indonesia (id)</option>
+    </select>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+    <input id="yas-sale-amt" type="number" placeholder="Sale Amount" style="width:130px;padding:6px 8px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#fff;" />
+    <button id="yas-calc-btn" type="button" style="padding:6px 10px;border-radius:6px;border:0;background:#16a34a;color:#fff;cursor:pointer;">30% Calc</button>
+    <span id="yas-panel-status" style="align-self:center;font-size:13px;color:#cbd5e1;">Ready</span>
+  </div>
+  <div id="yas-starter-list" style="font-size:13px;color:#e2e8f0;"></div>
+</section>
+<script>
+(function() {
+  const api = window.YasStudioAPI;
+  if (!api) return;
+  const statusEl = document.getElementById('yas-panel-status');
+  const userInput = document.getElementById('yas-login-user');
+  const loginBtn = document.getElementById('yas-login-btn');
+  const langSelect = document.getElementById('yas-lang-select');
+  const amtInput = document.getElementById('yas-sale-amt');
+  const calcBtn = document.getElementById('yas-calc-btn');
+  const listEl = document.getElementById('yas-starter-list');
+
+  if (langSelect && api.getLanguage) {
+    langSelect.value = api.getLanguage();
+    langSelect.addEventListener('change', () => {
+      const res = api.setLanguage(langSelect.value);
+      if (statusEl) statusEl.textContent = 'Lang: ' + res.lang;
+    });
+  }
+  if (loginBtn && userInput && api.login) {
+    loginBtn.addEventListener('click', async () => {
+      const name = (userInput.value || '').trim();
+      if (!name) return;
+      const out = await api.login(name);
+      if (statusEl) statusEl.textContent = out.ok ? ('Logged in: ' + out.user.id) : 'Login failed';
+    });
+  }
+  if (calcBtn && amtInput) {
+    calcBtn.addEventListener('click', async () => {
+      const amt = Number(amtInput.value || 0);
+      if (!(amt > 0)) return;
+      const r = await fetch('/api/referral/commission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, referrerId: localStorage.getItem('yas_user_id') || 'guest' })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (statusEl && d.entry) statusEl.textContent = '30% Commission: ' + d.entry.commission;
+    });
+  }
+  if (listEl && api.getStarterProducts) {
+    api.getStarterProducts().then(items => {
+      if (!items.length) return;
+      listEl.innerHTML = items.map(p => '• ' + p.title + ' (' + p.commission + ')').join('<br>');
+    }).catch(() => {});
+  }
+})();
+</script>
+
 </body>
 </html>
