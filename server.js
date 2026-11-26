@@ -435,6 +435,52 @@ app.post('/api/affiliate/link', (req, res) => {
   return res.json({ ok: true, link: item });
 });
 
+/* STEP_SECURITY_RATE_MONITOR */
+const rateBucket = new Map();
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+app.use('/api', (req, res, next) => {
+  const ip = String(req.ip || req.socket?.remoteAddress || 'local');
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxReq = 120;
+  let rec = rateBucket.get(ip);
+  if (!rec || now > rec.resetAt) {
+    rec = { count: 0, resetAt: now + windowMs };
+    rateBucket.set(ip, rec);
+  }
+  rec.count += 1;
+  if (rec.count > maxReq) {
+    return res.status(429).json({ error: 'Too many requests, please retry shortly' });
+  }
+  next();
+});
+
+app.get('/api/status', (req, res) => {
+  const mem = process.memoryUsage();
+  return res.json({
+    ok: true,
+    uptimeSec: Math.round(process.uptime()),
+    memoryMb: Math.round((mem.rss / 1024 / 1024) * 10) / 10,
+    modules: {
+      auth: true,
+      starterCatalog: true,
+      referral30: true,
+      languages: true,
+      ads: true,
+      notifications: true,
+      affiliate: true,
+      rateLimit: true
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
