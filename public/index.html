@@ -840,5 +840,30 @@ refreshAuth();
 })();
 </script>
 
+<!-- STEP_FE_API_CONNECTOR -->
+<script>
+window.YasStudioAPI = {
+  async getProducts() {
+    const r = await fetch('/api/products');
+    return r.ok ? r.json() : [];
+  },
+  async getAnalytics() {
+    const r = await fetch('/api/analytics');
+    return r.ok ? r.json() : {};
+  },
+  async trackShare(payload) {
+    const uid = localStorage.getItem('yas_user_id') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (uid) headers['x-user-id'] = uid;
+    const r = await fetch('/api/track-share', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload || {})
+    });
+    return r.ok ? r.json() : { ok: false };
+  }
+};
+</script>
+
 </body>
 </html>
