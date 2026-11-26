@@ -238,6 +238,17 @@ app.post('/api/auth/logout', (req, res) => {
   return res.json({ ok: true });
 });
 
+/* STEP_STARTER_CATALOG */
+const STARTER_PRODUCTS = [
+  { id: 'prod-studio-pro', title: 'Super Studio Creator Kit', category: 'Creator Tools', commission: '30%', url: '#product-studio-pro' },
+  { id: 'prod-ai-prompts', title: 'Viral Short-Form Prompt Pack', category: 'AI Templates', commission: '30%', url: '#product-ai-prompts' },
+  { id: 'prod-audio-beats', title: 'Copyright-Free Beat Bundle', category: 'Music & Audio', commission: '30%', url: '#product-audio-beats' }
+];
+
+app.get('/api/products/starter', (req, res) => {
+  return res.json({ ok: true, products: STARTER_PRODUCTS });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

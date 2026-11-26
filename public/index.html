@@ -865,5 +865,47 @@ window.YasStudioAPI = {
 };
 </script>
 
+<!-- STEP_AUTH_UI_HELPER -->
+<script>
+if (window.YasStudioAPI && !window.YasStudioAPI.login) {
+  window.YasStudioAPI.login = async function(username) {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok && data.token) {
+      localStorage.setItem('yas_session_token', data.token);
+      if (data.user && data.user.id) localStorage.setItem('yas_user_id', data.user.id);
+    }
+    return data;
+  };
+  window.YasStudioAPI.me = async function() {
+    const token = localStorage.getItem('yas_session_token') || '';
+    const uid = localStorage.getItem('yas_user_id') || '';
+    const headers = {};
+    if (token) headers['x-session-token'] = token;
+    if (uid) headers['x-user-id'] = uid;
+    const r = await fetch('/api/auth/me', { headers });
+    return r.ok ? r.json() : { authenticated: false, user: null };
+  };
+  window.YasStudioAPI.logout = async function() {
+    const token = localStorage.getItem('yas_session_token') || '';
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: token ? { 'x-session-token': token } : {}
+    }).catch(() => {});
+    localStorage.removeItem('yas_session_token');
+    return { ok: true };
+  };
+  window.YasStudioAPI.getStarterProducts = async function() {
+    const r = await fetch('/api/products/starter');
+    const d = await r.json().catch(() => ({}));
+    return Array.isArray(d.products) ? d.products : [];
+  };
+}
+</script>
+
 </body>
 </html>
