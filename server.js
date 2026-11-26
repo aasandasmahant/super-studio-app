@@ -193,6 +193,51 @@ if (process.env.MONGODB_URI) {
   } catch (_) {}
 }
 
+/* STEP_AUTH_SESSION_API */
+const activeSessions = new Map();
+
+function sanitizeUserId(raw) {
+  if (!raw) return '';
+  const clean = String(raw).trim().slice(0, 64);
+  return /^[a-zA-Z0-9_@.-]+$/.test(clean) ? clean : '';
+}
+
+app.post('/api/auth/login', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const uid = sanitizeUserId(body.userId || body.username || '');
+  if (!uid) {
+    return res.status(400).json({ error: 'Valid username or userId required' });
+  }
+  const role = uid.toLowerCase() === 'admin' ? 'admin' : 'member';
+  const token = crypto.randomBytes(24).toString('hex');
+  const session = {
+    token,
+    user: { id: uid, name: uid, role },
+    createdAt: Date.now()
+  };
+  activeSessions.set(token, session);
+  return res.json({ ok: true, token, user: session.user });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const token = String(req.header('x-session-token') || '').trim();
+  if (token && activeSessions.has(token)) {
+    const s = activeSessions.get(token);
+    return res.json({ authenticated: true, user: s.user });
+  }
+  const hdrUser = sanitizeUserId(req.header('x-user-id') || '');
+  if (hdrUser) {
+    return res.json({ authenticated: true, user: { id: hdrUser, name: hdrUser, role: 'member' } });
+  }
+  return res.json({ authenticated: false, user: null });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = String(req.header('x-session-token') || '').trim();
+  if (token) activeSessions.delete(token);
+  return res.json({ ok: true });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
