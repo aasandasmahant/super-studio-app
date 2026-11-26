@@ -481,6 +481,51 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+/* STEP_WEBRTC_SIGNAL_API */
+const callSignals = [];
+
+app.get('/api/calls/config', (req, res) => {
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ];
+  if (process.env.TURN_URL) {
+    iceServers.push({
+      urls: process.env.TURN_URL,
+      username: process.env.TURN_USERNAME || '',
+      credential: process.env.TURN_PASSWORD || ''
+    });
+  }
+  return res.json({ ok: true, enabled: true, iceServers });
+});
+
+app.post('/api/calls/signal', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const room = String(body.room || 'default').trim().slice(0, 64);
+  const from = String(body.from || 'guest').trim().slice(0, 64);
+  const type = String(body.type || '').trim().slice(0, 32);
+  if (!type) {
+    return res.status(400).json({ error: 'signal type required' });
+  }
+  const item = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    room,
+    from,
+    type,
+    payload: body.payload || null,
+    at: Date.now()
+  };
+  callSignals.push(item);
+  if (callSignals.length > 100) callSignals.shift();
+  return res.json({ ok: true, signal: item });
+});
+
+app.get('/api/calls/signals', (req, res) => {
+  const room = String(req.query.room || 'default').trim();
+  const list = callSignals.filter(s => s.room === room).slice(-20);
+  return res.json({ ok: true, room, count: list.length, signals: list });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
