@@ -324,6 +324,44 @@ app.get('/api/languages', (req, res) => {
   });
 });
 
+/* STEP_ADS_MONETIZATION_API */
+const adStats = { impressions: 0, clicks: 0, events: [] };
+
+app.get('/api/ads/config', (req, res) => {
+  const st = (typeof store !== 'undefined' && store && typeof store.getState === 'function')
+    ? store.getState()
+    : (typeof store !== 'undefined' && store ? store : {});
+  const customAds = (st && st.DEFAULT_ADMIN_STATE && st.DEFAULT_ADMIN_STATE.adsConfig) || st.adsConfig || {};
+  return res.json({
+    ok: true,
+    enabled: true,
+    slots: {
+      topBanner: { id: 'ad-top-banner', enabled: true, network: customAds.network || 'fallback' },
+      inlineFeed: { id: 'ad-inline-feed', enabled: true, network: customAds.network || 'fallback' }
+    },
+    stats: { impressions: adStats.impressions, clicks: adStats.clicks }
+  });
+});
+
+app.post('/api/ads/event', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const type = String(body.type || '').trim().toLowerCase();
+  if (type !== 'impression' && type !== 'click') {
+    return res.status(400).json({ error: 'type must be impression or click' });
+  }
+  if (type === 'impression') adStats.impressions += 1;
+  if (type === 'click') adStats.clicks += 1;
+  const ev = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    type,
+    slotId: String(body.slotId || 'default').slice(0, 64),
+    at: Date.now()
+  };
+  adStats.events.push(ev);
+  if (adStats.events.length > 50) adStats.events.shift();
+  return res.json({ ok: true, event: ev, stats: { impressions: adStats.impressions, clicks: adStats.clicks } });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

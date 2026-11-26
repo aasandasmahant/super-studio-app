@@ -928,5 +928,23 @@ if (window.YasStudioAPI && !window.YasStudioAPI.setLanguage) {
 }
 </script>
 
+<!-- STEP_ADS_UI_HELPER -->
+<script>
+if (window.YasStudioAPI && !window.YasStudioAPI.getAdsConfig) {
+  window.YasStudioAPI.getAdsConfig = async function() {
+    const r = await fetch('/api/ads/config');
+    return r.ok ? r.json() : { ok: false, slots: {} };
+  };
+  window.YasStudioAPI.trackAdEvent = async function(type, slotId) {
+    const r = await fetch('/api/ads/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, slotId })
+    });
+    return r.ok ? r.json() : { ok: false };
+  };
+}
+</script>
+
 </body>
 </html>
