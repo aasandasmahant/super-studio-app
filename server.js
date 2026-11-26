@@ -526,6 +526,18 @@ app.get('/api/calls/signals', (req, res) => {
   return res.json({ ok: true, room, count: list.length, signals: list });
 });
 
+/* STEP_MONGO_SCHEMAS_API */
+const { MONGO_SCHEMAS } = require('./db/mongoSchemas');
+
+app.get('/api/db/schemas', (req, res) => {
+  return res.json({
+    ok: true,
+    driverMode: process.env.MONGODB_URI ? 'mongo-configured' : 'json-fallback',
+    collections: Object.keys(MONGO_SCHEMAS),
+    schemas: MONGO_SCHEMAS
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
