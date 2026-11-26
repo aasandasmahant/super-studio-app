@@ -2,23 +2,18 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'yaschat-data.json');
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-const hashPass = (p) => crypto.createHash('sha256').update(String(p)).digest('hex');
+const hashPass = (p, salt = null) => { const useSalt = salt || crypto.randomBytes(16).toString('hex'); const derived = crypto.scryptSync(String(p), useSalt, 64).toString('hex'); return `${useSalt}:${derived}`; }; const verifyPass = (p, stored) => { if (!stored) return false; if (stored.includes(':')) { const [salt, hex] = stored.split(':'); const a = Buffer.from(hex, 'hex'); const b = crypto.scryptSync(String(p), salt, 64); return a.length === b.length && crypto.timingSafeEqual(a, b); } const legacy = crypto.createHash('sha256').update(String(p)).digest('hex'); return stored === legacy; };
 const makeToken = () => crypto.randomBytes(16).toString('hex');
-
 const makeFiveImages = (label, bg1, bg2) => [0, 1, 2, 3, 4].map((idx) => {
   const angles = ['Front View', 'Side Angle', 'Detail Shot', 'In Use', 'Compact View'];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs><rect width="480" height="320" rx="22" fill="url(#g)"/><circle cx="390" cy="70" r="56" fill="rgba(255,255,255,0.09)"/><text x="28" y="64" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold">${label.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text><text x="28" y="102" fill="#e2e8f0" font-family="sans-serif" font-size="16">Photo ${idx + 1}/5 • ${angles[idx]}</text><rect x="28" y="242" width="170" height="40" rx="12" fill="rgba(0,0,0,0.35)"/><text x="42" y="268" fill="#ffffff" font-family="sans-serif" font-size="15">YAS CHAT Preview</text></svg>`;
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 });
-
 const defaultProducts = () => {
   const lowItems = [
     ['SoundWave', 'Wired Bass Earbuds', '9.99', '4.3', '88%', 3, 'साफ़ आवाज़ और कम दाम', 'केबल हल्की है', 'बजट में कॉल व गाने सुनने वालों को', 'वायरलेस पसंद करने वालों को', '#1d4ed8', '#0f172a', 'https://example.com/low-soundwave'],
@@ -41,7 +36,6 @@ const defaultProducts = () => {
     ['ChargeMax', '100W GaN Multi-Port Hub', '89.99', '4.8', '95%', 4, 'एक साथ कई डिवाइस तेज़ चार्ज करने की सुविधा', 'प्रीमियम प्राइस रेंज', 'लैपटॉप, टैबलेट और फ़ोन साथ रखने वालों को', 'केवल एक साधारण चार्जर चाहने वालों को', '#92400e', '#241003', 'https://example.com/high-chargemax'],
     ['KeyCraft', 'Wireless Mechanical Keyboard', '119.99', '4.7', '94%', 4, 'आरामदायक टाइपिंग फील और मल्टी-डिवाइस', 'थोड़ी टाइपिंग आवाज़ रहती है', 'ज़्यादा लिखने या कोडिंग करने वालों को', 'बिल्कुल शांत मेम्ब्रेन की चाह रखने वालों को', '#881337', '#26040f', 'https://example.com/high-keycraft']
   ];
-
   const pack = (arr, tier) => arr.map((x, idx) => ({
     id: `${tier}-${idx + 1}`,
     tier,
@@ -58,10 +52,8 @@ const defaultProducts = () => {
     link: x[12],
     images: makeFiveImages(`${x[0]} • ${x[1]}`, x[10], x[11])
   }));
-
   return [...pack(lowItems, 'low'), ...pack(medItems, 'medium'), ...pack(highItems, 'high')];
 };
-
 let db = {
   settings: {
     appName: 'YAS CHAT',
@@ -87,7 +79,6 @@ let db = {
   shareClicks: [],
   purchases: []
 };
-
 if (fs.existsSync(DB_FILE)) {
   try {
     const saved = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
@@ -101,21 +92,18 @@ if (fs.existsSync(DB_FILE)) {
 if (!Array.isArray(db.products) || !db.products.length) {
   db.products = defaultProducts();
 }
-
 const saveDb = () => {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
   } catch (e) {}
 };
 saveDb();
-
 const getUserFromReq = (req) => {
   const token = String(req.headers['x-auth-token'] || '');
   if (!token || !db.sessions[token]) return null;
   const uid = db.sessions[token];
   return db.users.find((u) => u.id === uid) || null;
 };
-
 app.get('/api/auth/me', (req, res) => {
   const u = getUserFromReq(req);
   if (!u) return res.json({ user: null, allowSignup: db.settings.allowSignup });
@@ -124,7 +112,6 @@ app.get('/api/auth/me', (req, res) => {
     allowSignup: db.settings.allowSignup
   });
 });
-
 app.post('/api/auth/signup', (req, res) => {
   if (!db.settings.allowSignup) {
     return res.status(403).json({ error: 'Signup is currently disabled' });
@@ -132,8 +119,8 @@ app.post('/api/auth/signup', (req, res) => {
   const rawUser = String(req.body.username || '').trim().replace(/\s+/g, '_').slice(0, 30);
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 80);
   const password = String(req.body.password || '');
-  if (!rawUser || !email || password.length < 4) {
-    return res.status(400).json({ error: 'Username, email and password (min 4 chars) required' });
+  if (!rawUser || !email || !isStrongPassword(password)) {
+    return res.status(400).json({ error: "Username, email, and strong password (min 8 chars with uppercase, lowercase, number, and symbol) required" });
   }
   if (db.users.some((u) => u.email === email)) {
     return res.status(400).json({ error: 'Email already registered' });
@@ -151,20 +138,47 @@ app.post('/api/auth/signup', (req, res) => {
   const token = makeToken();
   db.sessions[token] = user.id;
   saveDb();
-  res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
-});
-
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+  });
 app.post('/api/auth/login', (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
-  const user = db.users.find((u) => u.email === email && u.passwordHash === hashPass(password));
+  const user = db.users.find((u) => u.email === email && verifyPass(password, u.passwordHash));
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   const token = makeToken();
   db.sessions[token] = user.id;
   saveDb();
-  res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+  });
+app.post('/api/auth/forgot-password', (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+    return res.status(400).json({ error: 'Email is required' });
+  const user = (db.users || []).find((u) => String(u.email || '').toLowerCase() === email);
+  if (!user) return res.status(404).json({ error: 'Account not found' });
+  db.resetCodes = db.resetCodes || {};
+  const code = String(crypto.randomInt(100000, 999999));
+  db.resetCodes[email] = { code, expiresAt: Date.now() + 15 * 60 * 1000 };
+  saveDb();
+    res.json({ ok: true, message: 'Reset code generated (valid for 15 minutes)', devResetCode: 'code' });
+app.post('/api/auth/reset-password', (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  const code = String((req.body && req.body.code) || '').trim();
+  const newPassword = String((req.body && req.body.newPassword) || '');
+  if (!email || !code || !isStrongPassword(newPassword)) {
+    return res.status(400).json({ error: 'Valid email, 6-digit code, and strong newPassword required' });
+  }
+  db.resetCodes = db.resetCodes || {};
+  const entry = db.resetCodes[email];
+  if (!entry || entry.code !== code || Date.now() > entry.expiresAt) {
+    return res.status(400).json({ error: 'Invalid or expired reset code' });
+  }
+  const user = (db.users || []).find((u) => String(u.email || '').toLowerCase() === email);
+  if (!user) return res.status(404).json({ error: 'Account not found' });
+  user.passwordHash = hashPass(newPassword);
+  delete db.resetCodes[email];
+  saveDb();
+  res.json({ ok: true, message: 'Password updated successfully' });
 });
-
 app.post('/api/auth/logout', (req, res) => {
   const token = String(req.headers['x-auth-token'] || '');
   if (token && db.sessions[token]) {
@@ -173,9 +187,10 @@ app.post('/api/auth/logout', (req, res) => {
   }
   res.json({ ok: true });
 });
-
 app.get('/api/messages', (req, res) => res.json(db.messages));
 app.post('/api/messages', (req, res) => {
+  const cleanText = String((req.body && req.body.text) || '').trim();
+  if (!cleanText) return res.status(400).json({ error: 'Message text is required' });
   const text = String(req.body.text || '').trim().slice(0, 500);
   if (!text) return res.status(400).json({ error: 'Empty message' });
   const u = getUserFromReq(req);
@@ -185,7 +200,6 @@ app.post('/api/messages', (req, res) => {
   saveDb();
   res.json(msg);
 });
-
 app.get('/api/communities', (req, res) => {
   const u = getUserFromReq(req);
   const uid = u ? String(u.id) : 'guest';
@@ -195,10 +209,7 @@ app.get('/api/communities', (req, res) => {
       name: c.name,
       members: c.members,
       joined: Array.isArray(c.joinedBy) && c.joinedBy.includes(uid)
-    }))
-  );
-});
-
+    });
 app.post('/api/communities/:id/toggle', (req, res) => {
   const u = getUserFromReq(req);
   const uid = u ? String(u.id) : 'guest';
@@ -216,7 +227,6 @@ app.post('/api/communities/:id/toggle', (req, res) => {
   saveDb();
   res.json({ id: comm.id, name: comm.name, members: comm.members, joined: idx < 0 });
 });
-
 app.get('/api/products', (req, res) => {
   const q = String(req.query.q || '').toLowerCase().trim();
   const tier = String(req.query.tier || 'all').toLowerCase().trim();
@@ -230,11 +240,9 @@ app.get('/api/products', (req, res) => {
         String(p.title || '').toLowerCase().includes(q) ||
         String(p.company || '').toLowerCase().includes(q) ||
         String(p.pros || '').toLowerCase().includes(q)
-    );
   }
   res.json(list);
 });
-
 app.post('/api/track-share', (req, res) => {
   const u = getUserFromReq(req);
   const username = u ? u.username : String(req.body.username || 'guest').trim() || 'guest';
@@ -250,7 +258,6 @@ app.post('/api/track-share', (req, res) => {
   saveDb();
   res.json({ ok: true });
 });
-
 app.get('/api/analytics', (req, res) => {
   const u = getUserFromReq(req);
   const targetUser = u ? u.username : String(req.query.username || '').trim();
@@ -273,7 +280,6 @@ app.get('/api/analytics', (req, res) => {
   const earnedAmount = validSales
     .reduce((sum, item) => sum + Number(item.commission || 0), 0)
     .toFixed(2);
-
   const countryMap = {};
   for (const sale of validSales) {
     const c = sale.country || 'Unknown';
@@ -282,9 +288,8 @@ app.get('/api/analytics', (req, res) => {
     countryMap[c].amount += Number(sale.commission || 0);
   }
   const countries = Object.values(countryMap)
-    .map((x) => ({ country: x.country, purchases: x.purchases, amount: x.amount.toFixed(2) }))
+    .map((x) => ({ country: x.country, purchases: x.purchases, amount: x.amount.toFixed(2) });
     .sort((a, b) => b.purchases - a.purchases);
-
   res.json({
     username: targetUser,
     sharesCount: userShares.length,
@@ -295,10 +300,10 @@ app.get('/api/analytics', (req, res) => {
     countries
   });
 });
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n====================================');
   console.log(' YAS CHAT RUNNING AT: http://localhost:' + PORT);
   console.log(' External Control: node ctl.js');
   console.log('====================================\n');
 });
+}
