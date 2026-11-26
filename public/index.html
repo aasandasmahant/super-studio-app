@@ -946,5 +946,24 @@ if (window.YasStudioAPI && !window.YasStudioAPI.getAdsConfig) {
 }
 </script>
 
+<!-- STEP_NOTIF_UI_HELPER -->
+<script>
+if (window.YasStudioAPI && !window.YasStudioAPI.getNotifications) {
+  window.YasStudioAPI.getNotifications = async function(limit) {
+    const qs = limit ? ('?limit=' + encodeURIComponent(limit)) : '';
+    const r = await fetch('/api/notifications' + qs);
+    return r.ok ? r.json() : { ok: false, notifications: [] };
+  };
+  window.YasStudioAPI.sendNotification = async function(title, message) {
+    const r = await fetch('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message })
+    });
+    return r.ok ? r.json() : { ok: false };
+  };
+}
+</script>
+
 </body>
 </html>

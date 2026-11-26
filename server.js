@@ -362,6 +362,34 @@ app.post('/api/ads/event', (req, res) => {
   return res.json({ ok: true, event: ev, stats: { impressions: adStats.impressions, clicks: adStats.clicks } });
 });
 
+/* STEP_NOTIFICATIONS_API */
+const notificationsFeed = [
+  { id: 'notif-welcome', title: 'Welcome to Super Studio', message: 'Core APIs and helpers are active.', createdAt: Date.now() }
+];
+
+app.get('/api/notifications', (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+  return res.json({ ok: true, count: notificationsFeed.length, notifications: notificationsFeed.slice(-limit) });
+});
+
+app.post('/api/notifications', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const title = String(body.title || '').trim().slice(0, 100);
+  const message = String(body.message || '').trim().slice(0, 300);
+  if (!title && !message) {
+    return res.status(400).json({ error: 'title or message required' });
+  }
+  const item = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    title: title || 'Update',
+    message,
+    createdAt: Date.now()
+  };
+  notificationsFeed.push(item);
+  if (notificationsFeed.length > 100) notificationsFeed.shift();
+  return res.json({ ok: true, notification: item });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
