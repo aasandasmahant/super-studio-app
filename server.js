@@ -62,7 +62,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/store', (req, res) => {
-  res.json(store.getState());
+  res.json((typeof store.getState === 'function' ? store.getState() : (store || {})));
 });
 
 app.post('/api/store/section', (req, res) => {
@@ -130,13 +130,13 @@ app.post('/api/communities/:id/toggle', (req, res) => {
 });
 
 app.get('/api/products', (req, res) => {
-  const st = store && typeof store.getState === 'function' ? store.getState() : {};
+  const st = store && typeof store.getState === 'function' ? (typeof store.getState === 'function' ? store.getState() : (store || {})) : {};
   const list = Array.isArray(st.products) ? st.products : (Array.isArray(db.products) ? db.products : []);
   res.json(list);
 });
 
 app.get('/api/analytics', (req, res) => {
-  const st = store && typeof store.getState === 'function' ? store.getState() : {};
+  const st = store && typeof store.getState === 'function' ? (typeof store.getState === 'function' ? store.getState() : (store || {})) : {};
   const productsCount = Array.isArray(st.products) ? st.products.length : (Array.isArray(db.products) ? db.products.length : 0);
   const sharesCount = Array.isArray(db.shares) ? db.shares.length : 0;
   res.json({
