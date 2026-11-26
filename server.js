@@ -172,6 +172,20 @@ if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
 }
 
+/* STEP_4_MONGO_OPTIONAL */
+let mongoConnected = false;
+if (process.env.MONGODB_URI) {
+  try {
+    const mongoose = require('mongoose');
+    mongoose.connect(process.env.MONGODB_URI).then(() => {
+      mongoConnected = true;
+      console.log('MongoDB connected');
+    }).catch((err) => {
+      console.warn('MongoDB fallback to JSON store:', err.message);
+    });
+  } catch (_) {}
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
