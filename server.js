@@ -9,6 +9,13 @@ const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'yaschat-data.json');
 
 app.use(express.json());
+/* STEP_5_JSON_GUARD */
+app.use((err, req, res, next) => {
+  if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+    return res.status(400).json({ error: 'Invalid JSON payload' });
+  }
+  next(err);
+});
 
 function loadDb() {
   try {
