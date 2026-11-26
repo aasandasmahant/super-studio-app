@@ -249,6 +249,48 @@ app.get('/api/products/starter', (req, res) => {
   return res.json({ ok: true, products: STARTER_PRODUCTS });
 });
 
+/* STEP_REFERRAL_30_API */
+const referralLedger = [];
+
+app.post('/api/referral/commission', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const referrerId = String(body.referrerId || req.header('x-user-id') || 'guest').trim().slice(0, 64);
+  const amount = Number(body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return res.status(400).json({ error: 'Valid positive amount required' });
+  }
+  const rate = 0.30;
+  const commission = Number((amount * rate).toFixed(2));
+  const entry = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    referrerId,
+    amount: Number(amount.toFixed(2)),
+    ratePercent: 30,
+    commission,
+    note: String(body.note || '').slice(0, 120),
+    createdAt: Date.now()
+  };
+  referralLedger.push(entry);
+  return res.json({ ok: true, entry });
+});
+
+app.get('/api/referral/summary', (req, res) => {
+  const referrerId = String(req.query.referrerId || '').trim();
+  const rows = referrerId
+    ? referralLedger.filter(r => r.referrerId === referrerId)
+    : referralLedger;
+  const totalSales = Number(rows.reduce((s, r) => s + r.amount, 0).toFixed(2));
+  const totalCommission = Number(rows.reduce((s, r) => s + r.commission, 0).toFixed(2));
+  return res.json({
+    ok: true,
+    ratePercent: 30,
+    count: rows.length,
+    totalSales,
+    totalCommission,
+    entries: rows.slice(-20)
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
