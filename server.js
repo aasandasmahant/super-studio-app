@@ -77,6 +77,42 @@ function saveStoreData() {
 }
 const RATE_BUCKETS = new Map();
 
+/* STEP_P3_ADMIN_AUTH_HELPERS */
+function getExpectedAdminSecret() {
+  const envSecret = String(process.env.ADMIN_SECRET || '').trim();
+  return envSecret || 'super-studio-owner-dev-key';
+}
+
+function createAdminToken(role = 'owner') {
+  const token = crypto.randomBytes(24).toString('hex');
+  const session = {
+    token,
+    role,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000
+  };
+  if (typeof STUDIO_SESSIONS !== 'undefined' && STUDIO_SESSIONS && typeof STUDIO_SESSIONS.set === 'function') {
+    STUDIO_SESSIONS.set(token, session);
+    if (typeof saveStoreData === 'function') saveStoreData();
+  }
+  return session;
+}
+
+function verifyAdminRequest(req) {
+  const authHeader = String(req.headers['authorization'] || '').trim();
+  const xAdminToken = String(req.headers['x-admin-token'] || '').trim();
+  const bearerToken = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+  const token = xAdminToken || bearerToken;
+  if (!token || typeof STUDIO_SESSIONS === 'undefined' || !STUDIO_SESSIONS || typeof STUDIO_SESSIONS.get !== 'function') {
+    return { ok: false, role: null };
+  }
+  const session = STUDIO_SESSIONS.get(token);
+  if (!session || Number(session.expiresAt || 0) < Date.now()) {
+    return { ok: false, role: null };
+  }
+  return { ok: true, role: session.role || 'owner' };
+}
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -283,6 +319,31 @@ const server = http.createServer(async (req, res) => {
     const token = String(req.headers['x-session-token'] || parsedUrl.searchParams.get('token') || '').trim();
     const session = STUDIO_SESSIONS.get(token) || null;
     return sendJson(res, 200, { ok: Boolean(session), authenticated: Boolean(session), session });
+  }
+
+  if (pathname === '/api/admin/login' && method === 'POST') {
+    const body = await readJsonBody(req);
+    const providedSecret = String(body.secret || body.password || '').trim();
+    const expectedSecret = getExpectedAdminSecret();
+    if (!providedSecret || providedSecret !== expectedSecret) {
+      return sendJson(res, 401, { ok: false, error: 'Invalid admin credentials' });
+    }
+    const requestedRole = String(body.role || 'owner').trim() || 'owner';
+    const session = createAdminToken(requestedRole);
+    return sendJson(res, 200, {
+      ok: true,
+      token: session.token,
+      role: session.role,
+      expiresAt: session.expiresAt
+    });
+  }
+
+  if (pathname === '/api/admin/session' && method === 'GET') {
+    const check = verifyAdminRequest(req);
+    if (!check.ok) {
+      return sendJson(res, 401, { ok: false, authenticated: false });
+    }
+    return sendJson(res, 200, { ok: true, authenticated: true, role: check.role });
   }
 
   if (pathname === '/api/payment/webhook' && method === 'POST') {
