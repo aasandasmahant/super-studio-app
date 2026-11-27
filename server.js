@@ -37,12 +37,44 @@ const STARTER_PRODUCTS = [
   { id: 'prod-03', title: 'Global Language & Media Suite', price: 1499, referralRate: 0.30, tag: 'Pro' }
 ];
 
-const STUDIO_NOTIFICATIONS = [];
-const STUDIO_AFFILIATE_CLICKS = [];
-const STUDIO_SESSIONS = new Map();
-const STUDIO_WEBHOOK_EVENTS = [];
-const STUDIO_CHAT_MESSAGES = [];
-const STUDIO_WEBRTC_SIGNALS = [];
+/* STEP_P1_JSON_PERSISTENCE */
+const DATA_DIR = path.join(__dirname, 'data');
+const STORE_FILE = path.join(DATA_DIR, 'store.json');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function loadStoreData() {
+  try {
+    if (!fs.existsSync(STORE_FILE)) return null;
+    return JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+const initialStore = loadStoreData() || {};
+STUDIO_NOTIFICATIONS = Array.isArray(initialStore.notifications) ? initialStore.notifications : [];
+STUDIO_AFFILIATE_CLICKS = Array.isArray(initialStore.affiliateClicks) ? initialStore.affiliateClicks : [];
+STUDIO_SESSIONS = new Map(Array.isArray(initialStore.sessions) ? initialStore.sessions : []);
+STUDIO_WEBHOOK_EVENTS = Array.isArray(initialStore.webhookEvents) ? initialStore.webhookEvents : [];
+STUDIO_CHAT_MESSAGES = Array.isArray(initialStore.chatMessages) ? initialStore.chatMessages : [];
+const STUDIO_WEBRTC_SIGNALS = Array.isArray(initialStore.webrtcSignals) ? initialStore.webrtcSignals : [];
+
+function saveStoreData() {
+  try {
+    const payload = {
+      notifications: STUDIO_NOTIFICATIONS.slice(-100),
+      affiliateClicks: STUDIO_AFFILIATE_CLICKS.slice(-200),
+      sessions: Array.from(STUDIO_SESSIONS.entries()).slice(-100),
+      webhookEvents: STUDIO_WEBHOOK_EVENTS.slice(-100),
+      chatMessages: STUDIO_CHAT_MESSAGES.slice(-200),
+      webrtcSignals: STUDIO_WEBRTC_SIGNALS.slice(-100),
+      updatedAt: Date.now()
+    };
+    fs.writeFileSync(STORE_FILE, JSON.stringify(payload), 'utf8');
+  } catch {}
+}
 const RATE_BUCKETS = new Map();
 
 function checkRateLimit(ipKey) {
@@ -155,6 +187,7 @@ const server = http.createServer(async (req, res) => {
       service: 'super-studio-app',
       uptimeSec: Math.floor(process.uptime()),
       mongoConfigured: hasMongoUri,
+      storageMode: hasMongoUri ? 'mongodb-uri-configured' : 'json-file-store',
       timestamp: Date.now()
     });
   }
@@ -217,7 +250,7 @@ const server = http.createServer(async (req, res) => {
       message,
       createdAt: Date.now()
     };
-    STUDIO_NOTIFICATIONS.push(item);
+    STUDIO_NOTIFICATIONS.push(item); saveStoreData();
     return sendJson(res, 200, { ok: true, notification: item });
   }
 
@@ -233,7 +266,7 @@ const server = http.createServer(async (req, res) => {
       commission30,
       trackedAt: Date.now()
     };
-    STUDIO_AFFILIATE_CLICKS.push(event);
+    STUDIO_AFFILIATE_CLICKS.push(event); saveStoreData();
     return sendJson(res, 200, { ok: true, tracked: event, totalEvents: STUDIO_AFFILIATE_CLICKS.length });
   }
 
@@ -242,7 +275,7 @@ const server = http.createServer(async (req, res) => {
     const username = String(body.username || 'creator').trim().slice(0, 50) || 'creator';
     const token = 'sess_' + Buffer.from(username + ':' + Date.now()).toString('base64url').slice(0, 24);
     const session = { token, username, role: 'creator', createdAt: Date.now() };
-    STUDIO_SESSIONS.set(token, session);
+    STUDIO_SESSIONS.set(token, session); saveStoreData();
     return sendJson(res, 200, { ok: true, session });
   }
 
@@ -273,7 +306,7 @@ const server = http.createServer(async (req, res) => {
       commission30: Number((amount * 0.30).toFixed(2)),
       receivedAt: Date.now()
     };
-    STUDIO_WEBHOOK_EVENTS.push(entry);
+    STUDIO_WEBHOOK_EVENTS.push(entry); saveStoreData();
     return sendJson(res, 200, { ok: true, webhook: entry, totalEvents: STUDIO_WEBHOOK_EVENTS.length });
     }
   }
@@ -295,7 +328,7 @@ const server = http.createServer(async (req, res) => {
       text,
       createdAt: Date.now()
     };
-    STUDIO_CHAT_MESSAGES.push(message);
+    STUDIO_CHAT_MESSAGES.push(message); saveStoreData();
     return sendJson(res, 200, { ok: true, message });
   }
 
@@ -315,7 +348,7 @@ const server = http.createServer(async (req, res) => {
       payload: body.payload !== undefined ? body.payload : {},
       createdAt: Date.now()
     };
-    STUDIO_WEBRTC_SIGNALS.push(signal);
+    STUDIO_WEBRTC_SIGNALS.push(signal); saveStoreData();
     return sendJson(res, 200, { ok: true, signal });
   }
 
