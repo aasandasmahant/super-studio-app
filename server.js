@@ -175,6 +175,29 @@ function getAdsConfigSummary() {
   };
 }
 
+/* STEP_P10_WEBRTC_CALLS */
+const STUDIO_CALL_SIGNALS_LIST = Array.isArray(initialStore && initialStore.callSignalsList)
+  ? initialStore.callSignalsList
+  : [];
+
+function getWebRtcConfigSummary() {
+  const stunUrl = String(process.env.STUN_URL || 'stun:stun.l.google.com:19302').trim();
+  const turnUrl = String(process.env.TURN_URL || '').trim();
+  const iceServers = [{ urls: stunUrl }];
+  if (turnUrl) {
+    iceServers.push({
+      urls: turnUrl,
+      username: String(process.env.TURN_USERNAME || '').trim(),
+      credential: String(process.env.TURN_CREDENTIAL || '').trim()
+    });
+  }
+  return {
+    iceServers,
+    turnConfigured: Boolean(turnUrl),
+    recordedSignals: STUDIO_CALL_SIGNALS_LIST.length
+  };
+}
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -643,6 +666,23 @@ const server = http.createServer(async (req, res) => {
     if (STUDIO_AD_EVENTS.length > 500) STUDIO_AD_EVENTS.length = 500;
     if (typeof saveStoreData === 'function') saveStoreData();
     return sendJson(res, 201, { ok: true, event: record, totalEvents: STUDIO_AD_EVENTS.length });
+  }
+
+  if (pathname === '/api/calls/config' && method === 'GET') {
+    return sendJson(res, 200, { ok: true, config: getWebRtcConfigSummary() });
+  }
+
+  if (pathname === '/api/calls/status' && method === 'GET') {
+    const roomId = String(urlObj.searchParams.get('roomId') || '').trim();
+    const items = roomId
+      ? STUDIO_CALL_SIGNALS_LIST.filter((s) => String(s.roomId || '') === roomId)
+      : STUDIO_CALL_SIGNALS_LIST.slice(0, 50);
+    return sendJson(res, 200, {
+      ok: true,
+      roomId: roomId || 'all',
+      total: items.length,
+      signals: items
+    });
   }
 
   if (pathname === '/api/admin/session' && method === 'GET') {
