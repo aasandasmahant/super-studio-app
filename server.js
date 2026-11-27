@@ -113,6 +113,17 @@ function verifyAdminRequest(req) {
   return { ok: true, role: session.role || 'owner' };
 }
 
+/* STEP_P4_PRODUCT_ADAPTER */
+const STUDIO_CUSTOM_PRODUCTS = Array.isArray(initialStore && initialStore.customProducts) ? initialStore.customProducts : [];
+
+function getProductProviderStatus() {
+  return {
+    clickbankConfigured: Boolean(String(process.env.CLICKBANK_API_KEY || '').trim()),
+    shareasaleConfigured: Boolean(String(process.env.SHAREASALE_API_TOKEN || '').trim()),
+    customCatalogCount: STUDIO_CUSTOM_PRODUCTS.length
+  };
+}
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -336,6 +347,57 @@ const server = http.createServer(async (req, res) => {
       role: session.role,
       expiresAt: session.expiresAt
     });
+  }
+
+  if (pathname === '/api/products/catalog' && method === 'GET') {
+    const q = String(urlObj.searchParams.get('q') || '').trim().toLowerCase();
+    const band = String(urlObj.searchParams.get('band') || '').trim().toLowerCase();
+    let items = STUDIO_CUSTOM_PRODUCTS.slice();
+    if (q) {
+      items = items.filter((p) =>
+        String(p.title || '').toLowerCase().includes(q) ||
+        String(p.category || '').toLowerCase().includes(q)
+      );
+    }
+    if (band && ['low', 'medium', 'high'].includes(band)) {
+      items = items.filter((p) => String(p.priceBand || '').toLowerCase() === band);
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      providers: getProductProviderStatus(),
+      total: items.length,
+      products: items
+    });
+  }
+
+  if (pathname === '/api/admin/products' && method === 'POST') {
+    const auth = verifyAdminRequest(req);
+    if (!auth.ok || !['owner', 'product_manager'].includes(auth.role)) {
+      return sendJson(res, 403, { ok: false, error: 'Admin or product_manager access required' });
+    }
+    const body = await readJsonBody(req);
+    const title = String(body.title || '').trim();
+    const affiliateUrl = String(body.affiliateUrl || '').trim();
+    if (!title || !affiliateUrl) {
+      return sendJson(res, 400, { ok: false, error: 'title and affiliateUrl are required' });
+    }
+    const item = {
+      id: 'prod_' + Date.now(),
+      title,
+      category: String(body.category || 'General').trim(),
+      price: Number(body.price || 0),
+      currency: String(body.currency || 'INR').trim(),
+      priceBand: ['low', 'medium', 'high'].includes(String(body.priceBand || '').toLowerCase())
+        ? String(body.priceBand).toLowerCase()
+        : 'medium',
+      affiliateNetwork: String(body.affiliateNetwork || 'custom').trim(),
+      affiliateUrl,
+      commissionRate: 0.3,
+      createdAt: new Date().toISOString()
+    };
+    STUDIO_CUSTOM_PRODUCTS.unshift(item);
+    if (typeof saveStoreData === 'function') saveStoreData();
+    return sendJson(res, 201, { ok: true, product: item, total: STUDIO_CUSTOM_PRODUCTS.length });
   }
 
   if (pathname === '/api/admin/session' && method === 'GET') {
