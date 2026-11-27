@@ -580,6 +580,10 @@ app.get('/api/payments/events', (req, res) => {
 });
 
 /* STEP_LANGUAGES_200_TRANSLATE_API_FIXED */
+const hasAllRoute = codeHas('/api/languages/all');
+const hasTranslateRoute = codeHas('/api/translate');
+function codeHas(p) { return fs.readFileSync(__filename, 'utf8').includes(p); }
+
 const LANG_210_LIST = (() => {
   const baseList = (typeof CORE_LANGUAGES !== 'undefined' && Array.isArray(CORE_LANGUAGES) && CORE_LANGUAGES.length)
     ? CORE_LANGUAGES
@@ -623,7 +627,7 @@ const LANG_GLOSSARY = {
   id: { hello: 'Halo', welcome: 'Selamat datang' }
 };
 
-if (!hasAllRoute) {
+if (typeof hasAllRoute === "undefined" || !hasAllRoute) {
   app.get('/api/languages/all', (req, res) => {
     const q = String(req.query.q || '').trim().toLowerCase();
     const filtered = q
@@ -642,7 +646,7 @@ if (!hasAllRoute) {
   });
 }
 
-if (!hasTranslateRoute) {
+if (typeof hasTranslateRoute === "undefined" || !hasTranslateRoute) {
   app.post('/api/translate', (req, res) => {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const text = String(body.text || '').trim().slice(0, 500);
