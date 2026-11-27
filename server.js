@@ -288,6 +288,19 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { ok: true, signal });
   }
 
+  if (pathname === '/api/affiliate/summary' && method === 'GET') {
+    const totalAmount = STUDIO_AFFILIATE_CLICKS.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const totalCommission30 = Number((totalAmount * 0.30).toFixed(2));
+    return sendJson(res, 200, {
+      ok: true,
+      totalClicks: STUDIO_AFFILIATE_CLICKS.length,
+      totalAmount: Number(totalAmount.toFixed(2)),
+      commissionRate: '30%',
+      totalCommission30,
+      recentEvents: STUDIO_AFFILIATE_CLICKS.slice(-10)
+    });
+  }
+
   return sendJson(res, 404, { ok: false, error: 'Not found' });
 });
 
