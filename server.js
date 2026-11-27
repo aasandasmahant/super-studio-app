@@ -97,6 +97,9 @@ const STUDIO_CONTROLS_HTML = `<!doctype html>
       <button type="button" onclick="callApi('/api/products','GET')">Starter Products</button>
       <button type="button" onclick="callApi('/api/notifications','POST',{title:'Alert',message:'Studio active'})">Send Alert</button>
       <button type="button" onclick="callApi('/api/affiliate/track','POST',{partner:'studio',ref:'YAS30',amount:1000})">Track 30% Aff</button>
+      <button type="button" onclick="callApi('/api/session/login','POST',{username:'aasan'})">Session Login</button>
+      <button type="button" onclick="callApi('/api/chat/messages','POST',{room:'lobby',sender:'aasan',text:'Hello studio'})">Send Chat</button>
+      <button type="button" onclick="callApi('/api/payment/webhook','POST',{event:'payment.completed',orderId:'ord_101',amount:999})">Test Webhook</button>
     </div>
     <pre id="out" style="margin-top:12px;padding:10px;background:#030712;border-radius:6px;overflow:auto;max-height:220px;">Ready.</pre>
   </div>
