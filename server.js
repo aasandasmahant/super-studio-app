@@ -43,6 +43,21 @@ const STUDIO_SESSIONS = new Map();
 const STUDIO_WEBHOOK_EVENTS = [];
 const STUDIO_CHAT_MESSAGES = [];
 const STUDIO_WEBRTC_SIGNALS = [];
+const RATE_BUCKETS = new Map();
+
+function checkRateLimit(ipKey) {
+  const now = Date.now();
+  const windowMs = 60000;
+  const maxReq = 120;
+  const rec = RATE_BUCKETS.get(ipKey) || { count: 0, resetAt: now + windowMs };
+  if (now > rec.resetAt) {
+    rec.count = 0;
+    rec.resetAt = now + windowMs;
+  }
+  rec.count += 1;
+  RATE_BUCKETS.set(ipKey, rec);
+  return rec.count <= maxReq;
+}
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -115,7 +130,12 @@ const STUDIO_CONTROLS_HTML = `<!doctype html>
 </body>
 </html>`;
 
+/* STEP_P1_RATE_LIMIT_AND_WEBHOOK_SEC */
 const server = http.createServer(async (req, res) => {
+  const clientIp = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'local').split(',')[0].trim();
+  if (!checkRateLimit(clientIp)) {
+    return sendJson(res, 429, { ok: false, error: 'Too many requests' });
+  }
   const parsedUrl = new URL(req.url || '/', `http://127.0.0.1:${PORT}`);
   const pathname = parsedUrl.pathname;
   const method = (req.method || 'GET').toUpperCase();
@@ -233,6 +253,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/payment/webhook' && method === 'POST') {
+    const secret = String(process.env.WEBHOOK_SECRET || '').trim();
+    if (secret) {
+      const sigHeader = String(req.headers['x-webhook-signature'] || '').trim();
+      const rawCheck = JSON.stringify(await readJsonBody(req));
+      const expected = crypto.createHmac('sha256', secret).update(rawCheck).digest('hex');
+      if (!sigHeader || sigHeader !== expected) {
+        return sendJson(res, 401, { ok: false, error: 'Invalid webhook signature' });
+      }
+    }
+    if (false) {
     const body = await readJsonBody(req);
     const amount = Math.max(0, Number(body.amount || 0) || 0);
     const entry = {
@@ -245,6 +275,7 @@ const server = http.createServer(async (req, res) => {
     };
     STUDIO_WEBHOOK_EVENTS.push(entry);
     return sendJson(res, 200, { ok: true, webhook: entry, totalEvents: STUDIO_WEBHOOK_EVENTS.length });
+    }
   }
 
   if (pathname === '/api/chat/messages' && method === 'GET') {
