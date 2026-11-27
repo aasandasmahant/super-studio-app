@@ -161,6 +161,20 @@ function getTranslationProviderConfig() {
   };
 }
 
+/* STEP_P9_ADS_ANALYTICS */
+const STUDIO_AD_EVENTS = Array.isArray(initialStore && initialStore.adEvents)
+  ? initialStore.adEvents
+  : [];
+
+function getAdsConfigSummary() {
+  return {
+    adsEnabled: String(process.env.ADS_ENABLED || 'false').trim().toLowerCase() === 'true',
+    adSlotBannerEnabled: true,
+    consentRequired: true,
+    totalEvents: STUDIO_AD_EVENTS.length
+  };
+}
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -604,6 +618,31 @@ const server = http.createServer(async (req, res) => {
       mode: 'fallback_preview',
       translatedText: '[' + targetLang + '] ' + text
     });
+  }
+
+  if (pathname === '/api/ads/config' && method === 'GET') {
+    return sendJson(res, 200, { ok: true, config: getAdsConfigSummary() });
+  }
+
+  if (pathname === '/api/ads/impression' && method === 'POST') {
+    const body = await readJsonBody(req);
+    const slotId = String(body.slotId || 'banner_top').trim();
+    const eventType = String(body.eventType || 'impression').trim().toLowerCase();
+    const consentGiven = Boolean(body.consentGiven);
+    if (!['impression', 'click'].includes(eventType)) {
+      return sendJson(res, 400, { ok: false, error: 'eventType must be impression or click' });
+    }
+    const record = {
+      id: 'ad_' + Date.now(),
+      slotId,
+      eventType,
+      consentGiven,
+      createdAt: new Date().toISOString()
+    };
+    STUDIO_AD_EVENTS.unshift(record);
+    if (STUDIO_AD_EVENTS.length > 500) STUDIO_AD_EVENTS.length = 500;
+    if (typeof saveStoreData === 'function') saveStoreData();
+    return sendJson(res, 201, { ok: true, event: record, totalEvents: STUDIO_AD_EVENTS.length });
   }
 
   if (pathname === '/api/admin/session' && method === 'GET') {
