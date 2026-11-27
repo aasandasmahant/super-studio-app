@@ -704,6 +704,23 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  /* STEP_P12_DEPLOY_READINESS */
+  if (pathname === '/api/system/deploy-readiness' && method === 'GET') {
+    return sendJson(res, 200, {
+      ok: true,
+      service: 'super-studio-app',
+      nodeVersion: process.version,
+      portConfigured: Boolean(String(process.env.PORT || '3000').trim()),
+      envChecks: {
+        adminSecretCustomSet: Boolean(String(process.env.ADMIN_SECRET || '').trim()),
+        clickbankKeySet: Boolean(String(process.env.CLICKBANK_API_KEY || '').trim()),
+        shareasaleTokenSet: Boolean(String(process.env.SHAREASALE_API_TOKEN || '').trim()),
+        turnServerSet: Boolean(String(process.env.TURN_URL || '').trim())
+      },
+      readyForStaging: true
+    });
+  }
+
   if (pathname === '/api/admin/session' && method === 'GET') {
     const check = verifyAdminRequest(req);
     if (!check.ok) {
