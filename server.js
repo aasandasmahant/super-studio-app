@@ -124,6 +124,20 @@ function getProductProviderStatus() {
   };
 }
 
+/* STEP_P5_REVIEWS_VERDICT */
+const STUDIO_PRODUCT_VERDICTS = (initialStore && typeof initialStore.productVerdicts === 'object' && initialStore.productVerdicts !== null)
+  ? initialStore.productVerdicts
+  : {};
+
+function buildAiVerdictSummary(ratingAvg = 0, prosCount = 0, consCount = 0, explicitVerdict = '') {
+  const norm = String(explicitVerdict || '').trim().toLowerCase();
+  if (['buy', 'caution', 'avoid'].includes(norm)) return norm;
+  const score = Number(ratingAvg || 0) + (prosCount * 0.25) - (consCount * 0.35);
+  if (score >= 4.0) return 'buy';
+  if (score >= 2.5) return 'caution';
+  return 'avoid';
+}
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -398,6 +412,49 @@ const server = http.createServer(async (req, res) => {
     STUDIO_CUSTOM_PRODUCTS.unshift(item);
     if (typeof saveStoreData === 'function') saveStoreData();
     return sendJson(res, 201, { ok: true, product: item, total: STUDIO_CUSTOM_PRODUCTS.length });
+  }
+
+  if (pathname === '/api/reviews/verdict' && method === 'GET') {
+    const productId = String(urlObj.searchParams.get('productId') || '').trim();
+    if (productId) {
+      const item = STUDIO_PRODUCT_VERDICTS[productId] || null;
+      return sendJson(res, 200, { ok: true, productId, verdict: item });
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      total: Object.keys(STUDIO_PRODUCT_VERDICTS).length,
+      verdicts: STUDIO_PRODUCT_VERDICTS
+    });
+  }
+
+  if (pathname === '/api/admin/reviews/verdict' && method === 'POST') {
+    const auth = verifyAdminRequest(req);
+    if (!auth.ok || !['owner', 'product_manager'].includes(auth.role)) {
+      return sendJson(res, 403, { ok: false, error: 'Admin or product_manager access required' });
+    }
+    const body = await readJsonBody(req);
+    const productId = String(body.productId || '').trim();
+    if (!productId) {
+      return sendJson(res, 400, { ok: false, error: 'productId is required' });
+    }
+    const pros = Array.isArray(body.pros) ? body.pros.map((x) => String(x).trim()).filter(Boolean) : [];
+    const cons = Array.isArray(body.cons) ? body.cons.map((x) => String(x).trim()).filter(Boolean) : [];
+    const sources = Array.isArray(body.sources) ? body.sources.map((x) => String(x).trim()).filter(Boolean) : [];
+    const ratingAvg = Number(body.ratingAvg || 0);
+    const verdict = buildAiVerdictSummary(ratingAvg, pros.length, cons.length, body.verdict);
+    const record = {
+      productId,
+      verdict,
+      ratingAvg,
+      pros,
+      cons,
+      sources,
+      summary: String(body.summary || '').trim(),
+      updatedAt: new Date().toISOString()
+    };
+    STUDIO_PRODUCT_VERDICTS[productId] = record;
+    if (typeof saveStoreData === 'function') saveStoreData();
+    return sendJson(res, 200, { ok: true, verdict: record });
   }
 
   if (pathname === '/api/admin/session' && method === 'GET') {
