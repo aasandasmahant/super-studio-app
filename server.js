@@ -138,6 +138,11 @@ function buildAiVerdictSummary(ratingAvg = 0, prosCount = 0, consCount = 0, expl
   return 'avoid';
 }
 
+/* STEP_P6_COMMUNITY_MODERATION */
+const STUDIO_MODERATION_REPORTS = Array.isArray(initialStore && initialStore.moderationReports)
+  ? initialStore.moderationReports
+  : [];
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -455,6 +460,60 @@ const server = http.createServer(async (req, res) => {
     STUDIO_PRODUCT_VERDICTS[productId] = record;
     if (typeof saveStoreData === 'function') saveStoreData();
     return sendJson(res, 200, { ok: true, verdict: record });
+  }
+
+  if (pathname === '/api/community/reports' && method === 'POST') {
+    const body = await readJsonBody(req);
+    const reason = String(body.reason || '').trim();
+    const targetId = String(body.targetId || '').trim();
+    if (!reason || !targetId) {
+      return sendJson(res, 400, { ok: false, error: 'targetId and reason are required' });
+    }
+    const report = {
+      id: 'rep_' + Date.now(),
+      targetType: String(body.targetType || 'message').trim(),
+      targetId,
+      reason,
+      reporterId: String(body.reporterId || 'anonymous').trim(),
+      status: 'open',
+      createdAt: new Date().toISOString()
+    };
+    STUDIO_MODERATION_REPORTS.unshift(report);
+    if (typeof saveStoreData === 'function') saveStoreData();
+    return sendJson(res, 201, { ok: true, report });
+  }
+
+  if (pathname === '/api/admin/reports' && method === 'GET') {
+    const auth = verifyAdminRequest(req);
+    if (!auth.ok || !['owner', 'moderator'].includes(auth.role)) {
+      return sendJson(res, 403, { ok: false, error: 'Admin or moderator access required' });
+    }
+    const status = String(urlObj.searchParams.get('status') || '').trim().toLowerCase();
+    const list = status
+      ? STUDIO_MODERATION_REPORTS.filter((r) => String(r.status || '').toLowerCase() === status)
+      : STUDIO_MODERATION_REPORTS;
+    return sendJson(res, 200, { ok: true, total: list.length, reports: list });
+  }
+
+  if (pathname === '/api/admin/reports/resolve' && method === 'POST') {
+    const auth = verifyAdminRequest(req);
+    if (!auth.ok || !['owner', 'moderator'].includes(auth.role)) {
+      return sendJson(res, 403, { ok: false, error: 'Admin or moderator access required' });
+    }
+    const body = await readJsonBody(req);
+    const id = String(body.id || '').trim();
+    const nextStatus = String(body.status || 'resolved').trim().toLowerCase();
+    if (!id || !['open', 'resolved', 'dismissed'].includes(nextStatus)) {
+      return sendJson(res, 400, { ok: false, error: 'Valid id and status (open/resolved/dismissed) required' });
+    }
+    const found = STUDIO_MODERATION_REPORTS.find((r) => r.id === id);
+    if (!found) {
+      return sendJson(res, 404, { ok: false, error: 'Report not found' });
+    }
+    found.status = nextStatus;
+    found.resolvedAt = new Date().toISOString();
+    if (typeof saveStoreData === 'function') saveStoreData();
+    return sendJson(res, 200, { ok: true, report: found });
   }
 
   if (pathname === '/api/admin/session' && method === 'GET') {
