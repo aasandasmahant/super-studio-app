@@ -148,6 +148,19 @@ const STUDIO_AFFILIATE_CLICKS_LIST = Array.isArray(initialStore && initialStore.
   ? initialStore.affiliateClicksList
   : [];
 
+/* STEP_P8_TRANSLATION_HELPER */
+const STUDIO_LANGUAGES = (typeof SUPPORTED_LANGUAGES !== 'undefined' && Array.isArray(SUPPORTED_LANGUAGES) && SUPPORTED_LANGUAGES.length > 0)
+  ? SUPPORTED_LANGUAGES
+  : ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'ur', 'gu', 'kn', 'ml', 'pa', 'or', 'as', 'es', 'fr', 'de', 'pt', 'ru', 'ja', 'ko', 'zh', 'ar', 'id', 'th', 'vi', 'tr', 'it', 'nl', 'pl', 'uk'];
+
+function getTranslationProviderConfig() {
+  return {
+    providerUrl: String(process.env.LIBRETRANSLATE_URL || '').trim(),
+    apiKeyConfigured: Boolean(String(process.env.TRANSLATE_API_KEY || '').trim()),
+    languageCount: STUDIO_LANGUAGES.length
+  };
+}
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -566,6 +579,30 @@ const server = http.createServer(async (req, res) => {
       commissionRate: 0.3,
       totalEstimatedCommission,
       clicks: STUDIO_AFFILIATE_CLICKS_LIST
+    });
+  }
+
+  if (pathname === '/api/translation/languages' && method === 'GET') {
+    return sendJson(res, 200, {
+      ok: true,
+      config: getTranslationProviderConfig(),
+      total: STUDIO_LANGUAGES.length,
+      languages: STUDIO_LANGUAGES
+    });
+  }
+
+  if (pathname === '/api/translation/translate' && method === 'POST') {
+    const body = await readJsonBody(req);
+    const text = String(body.text || '').trim();
+    const targetLang = String(body.targetLang || body.lang || 'hi').trim().toLowerCase();
+    if (!text) {
+      return sendJson(res, 400, { ok: false, error: 'text is required' });
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      targetLang,
+      mode: 'fallback_preview',
+      translatedText: '[' + targetLang + '] ' + text
     });
   }
 
