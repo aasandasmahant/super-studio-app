@@ -762,6 +762,41 @@ if (!code.includes("'/api/affiliate/track'")) {
   });
 }
 
+/* STEP_SESSION_PAYMENT_WEBHOOK_API */
+const STUDIO_SESSIONS = new Map();
+const STUDIO_WEBHOOK_EVENTS = [];
+
+if (!code.includes("'/api/session/login'")) {
+  app.post('/api/session/login', (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const username = String(body.username || 'creator').trim().slice(0, 50) || 'creator';
+    const token = 'sess_' + Buffer.from(username + ':' + Date.now()).toString('base64url').slice(0, 24);
+    const session = { token, username, role: 'creator', createdAt: Date.now() };
+    STUDIO_SESSIONS.set(token, session);
+    return res.json({ ok: true, session });
+  });
+
+  app.get('/api/session/me', (req, res) => {
+    const token = String((req.headers['x-session-token'] || req.query.token || '')).trim();
+    const session = STUDIO_SESSIONS.get(token) || null;
+    return res.json({ ok: Boolean(session), authenticated: Boolean(session), session });
+  });
+}
+
+if (!code.includes("'/api/payment/webhook'")) {
+  app.post('/api/payment/webhook', (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const eventType = String(body.event || body.type || 'payment.completed').trim().slice(0, 60);
+    const orderId = String(body.orderId || ('ord_' + Date.now())).trim().slice(0, 60);
+    const amount = Math.max(0, Number(body.amount || 0) || 0);
+    const commission30 = Number((amount * 0.30).toFixed(2));
+    const entry = { id: 'wh_' + Date.now(), eventType, orderId, amount, commission30, receivedAt: Date.now() };
+    STUDIO_WEBHOOK_EVENTS.push(entry);
+    if (STUDIO_WEBHOOK_EVENTS.length > 200) STUDIO_WEBHOOK_EVENTS.shift();
+    return res.json({ ok: true, webhook: entry, totalEvents: STUDIO_WEBHOOK_EVENTS.length });
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
