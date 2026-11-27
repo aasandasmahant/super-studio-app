@@ -843,6 +843,27 @@ if (!code.includes("'/api/webrtc/signal'")) {
   });
 }
 
+/* STEP_SECURITY_HEADERS_AND_STATUS */
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+if (!code.includes("'/api/system/status'")) {
+  app.get('/api/system/status', (req, res) => {
+    const hasMongoUri = Boolean(process.env.MONGODB_URI && String(process.env.MONGODB_URI).trim());
+    return res.json({
+      ok: true,
+      service: 'super-studio-app',
+      uptimeSec: Math.floor(process.uptime()),
+      mongoConfigured: hasMongoUri,
+      timestamp: Date.now()
+    });
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
