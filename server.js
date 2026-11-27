@@ -143,6 +143,11 @@ const STUDIO_MODERATION_REPORTS = Array.isArray(initialStore && initialStore.mod
   ? initialStore.moderationReports
   : [];
 
+/* STEP_P7_AFFILIATE_TRACKING */
+const STUDIO_AFFILIATE_CLICKS_LIST = Array.isArray(initialStore && initialStore.affiliateClicksList)
+  ? initialStore.affiliateClicksList
+  : [];
+
 function checkRateLimit(ipKey) {
   const now = Date.now();
   const windowMs = 60000;
@@ -514,6 +519,54 @@ const server = http.createServer(async (req, res) => {
     found.resolvedAt = new Date().toISOString();
     if (typeof saveStoreData === 'function') saveStoreData();
     return sendJson(res, 200, { ok: true, report: found });
+  }
+
+  if (pathname === '/api/affiliate/click' && method === 'POST') {
+    const body = await readJsonBody(req);
+    const productId = String(body.productId || '').trim();
+    if (!productId) {
+      return sendJson(res, 400, { ok: false, error: 'productId is required' });
+    }
+    const price = Math.max(0, Number(body.price || 0));
+    const commissionRate = 0.3;
+    const estimatedCommission = Number((price * commissionRate).toFixed(2));
+    const clickId = 'clk_' + crypto.randomBytes(8).toString('hex');
+    const clickRecord = {
+      clickId,
+      productId,
+      referrerId: String(body.referrerId || 'direct').trim(),
+      price,
+      commissionRate,
+      estimatedCommission,
+      status: 'tracked',
+      createdAt: new Date().toISOString()
+    };
+    STUDIO_AFFILIATE_CLICKS_LIST.unshift(clickRecord);
+    if (typeof saveStoreData === 'function') saveStoreData();
+    return sendJson(res, 201, {
+      ok: true,
+      clickId,
+      commissionRate,
+      estimatedCommission,
+      click: clickRecord
+    });
+  }
+
+  if (pathname === '/api/admin/affiliate/clicks' && method === 'GET') {
+    const auth = verifyAdminRequest(req);
+    if (!auth.ok || !['owner', 'finance_manager'].includes(auth.role)) {
+      return sendJson(res, 403, { ok: false, error: 'Admin or finance_manager access required' });
+    }
+    const totalEstimatedCommission = Number(
+      STUDIO_AFFILIATE_CLICKS_LIST.reduce((acc, item) => acc + Number(item.estimatedCommission || 0), 0).toFixed(2)
+    );
+    return sendJson(res, 200, {
+      ok: true,
+      totalClicks: STUDIO_AFFILIATE_CLICKS_LIST.length,
+      commissionRate: 0.3,
+      totalEstimatedCommission,
+      clicks: STUDIO_AFFILIATE_CLICKS_LIST
+    });
   }
 
   if (pathname === '/api/admin/session' && method === 'GET') {
