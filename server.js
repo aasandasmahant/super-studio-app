@@ -685,6 +685,25 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  /* STEP_P11_SMOKE_CHECK */
+  if (pathname === '/api/system/smoke-check' && method === 'GET') {
+    return sendJson(res, 200, {
+      ok: true,
+      service: 'super-studio-app',
+      uptimeSec: Math.floor(process.uptime()),
+      modules: {
+        adminAuth: typeof verifyAdminRequest === 'function',
+        productsCatalog: typeof getProductProviderStatus === 'function',
+        reviewsVerdict: typeof buildAiVerdictSummary === 'function',
+        moderation: Array.isArray(typeof STUDIO_MODERATION_REPORTS !== 'undefined' ? STUDIO_MODERATION_REPORTS : null),
+        affiliateTracking: Array.isArray(typeof STUDIO_AFFILIATE_CLICKS_LIST !== 'undefined' ? STUDIO_AFFILIATE_CLICKS_LIST : null),
+        translation: typeof getTranslationProviderConfig === 'function',
+        ads: typeof getAdsConfigSummary === 'function',
+        calls: typeof getWebRtcConfigSummary === 'function'
+      }
+    });
+  }
+
   if (pathname === '/api/admin/session' && method === 'GET') {
     const check = verifyAdminRequest(req);
     if (!check.ok) {
