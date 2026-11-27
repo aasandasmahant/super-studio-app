@@ -1035,5 +1035,46 @@ if (window.YasStudioAPI && !window.YasStudioAPI.getNotifications) {
 })();
 </script>
 
+<!-- STEP_STUDIO_QUICK_CONTROLS -->
+<div id="studio-quick-controls" style="margin:12px 0;padding:12px;border:1px solid #2d3748;border-radius:10px;background:#111827;color:#f9fafb;font-family:sans-serif;font-size:13px;">
+  <div style="font-weight:700;margin-bottom:8px;">Studio Quick Controls (200+ Langs · Media · Alerts · 30% Affiliate)</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+    <button type="button" onclick="studioLoadLangs()">Load 200+ Langs</button>
+    <button type="button" onclick="studioTestMedia()">Test Media Upload</button>
+    <button type="button" onclick="studioSendNotif()">Send Alert</button>
+    <button type="button" onclick="studioTrackAff()">Track 30% Aff (₹1000)</button>
+  </div>
+  <pre id="studio-quick-out" style="margin-top:8px;padding:8px;background:#030712;border-radius:6px;overflow:auto;max-height:140px;">Ready.</pre>
+</div>
+<script>
+async function studioShowOut(v) {
+  const el = document.getElementById('studio-quick-out');
+  if (el) el.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+}
+async function studioLoadLangs() {
+  try { const r = await fetch('/api/languages/all'); studioShowOut(await r.json()); }
+  catch (e) { studioShowOut(e.message); }
+}
+async function studioTestMedia() {
+  try {
+    const b64 = btoa('studio-ping');
+    const r = await fetch('/api/media/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filename: 'ping.txt', mimeType: 'text/plain', base64Data: b64 }) });
+    studioShowOut(await r.json());
+  } catch (e) { studioShowOut(e.message); }
+}
+async function studioSendNotif() {
+  try {
+    const r = await fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Studio', message: 'Quick test notification' }) });
+    studioShowOut(await r.json());
+  } catch (e) { studioShowOut(e.message); }
+}
+async function studioTrackAff() {
+  try {
+    const r = await fetch('/api/affiliate/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ partner: 'studio', ref: 'YAS30', amount: 1000 }) });
+    studioShowOut(await r.json());
+  } catch (e) { studioShowOut(e.message); }
+}
+</script>
+<!-- /STEP_STUDIO_QUICK_CONTROLS -->
 </body>
 </html>
