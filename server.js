@@ -709,6 +709,59 @@ app.get('/api/media/list', (req, res) => {
   return res.json({ ok: true, count: uploadedMedia.length, items: uploadedMedia.slice(-20) });
 });
 
+/* STEP_NOTIF_AFFILIATE_API */
+const STUDIO_NOTIFICATIONS = [];
+const STUDIO_AFFILIATE_CLICKS = [];
+
+if (!code.includes("'/api/notifications'")) {
+  app.get('/api/notifications', (req, res) => {
+    return res.json({
+      ok: true,
+      count: STUDIO_NOTIFICATIONS.length,
+      notifications: STUDIO_NOTIFICATIONS.slice(-25)
+    });
+  });
+
+  app.post('/api/notifications', (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const title = String(body.title || 'Studio Alert').trim().slice(0, 100);
+    const message = String(body.message || '').trim().slice(0, 300);
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' });
+    }
+    const item = {
+      id: 'notif-' + Date.now(),
+      title,
+      message,
+      createdAt: Date.now()
+    };
+    STUDIO_NOTIFICATIONS.push(item);
+    if (STUDIO_NOTIFICATIONS.length > 200) STUDIO_NOTIFICATIONS.shift();
+    return res.json({ ok: true, notification: item });
+  });
+}
+
+if (!code.includes("'/api/affiliate/track'")) {
+  app.post('/api/affiliate/track', (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const partner = String(body.partner || 'direct').trim().slice(0, 40);
+    const codeRef = String(body.ref || 'YAS30').trim().slice(0, 40);
+    const amount = Math.max(0, Math.min(1000000, Number(body.amount || 0) || 0));
+    const commission30 = Number((amount * 0.30).toFixed(2));
+    const event = {
+      id: 'aff-' + Date.now(),
+      partner,
+      ref: codeRef,
+      amount,
+      commission30,
+      trackedAt: Date.now()
+    };
+    STUDIO_AFFILIATE_CLICKS.push(event);
+    if (STUDIO_AFFILIATE_CLICKS.length > 200) STUDIO_AFFILIATE_CLICKS.shift();
+    return res.json({ ok: true, tracked: event, totalEvents: STUDIO_AFFILIATE_CLICKS.length });
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
