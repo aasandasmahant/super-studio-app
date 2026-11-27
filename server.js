@@ -797,6 +797,52 @@ if (!code.includes("'/api/payment/webhook'")) {
   });
 }
 
+/* STEP_CHAT_WEBRTC_SIGNALING_API */
+const STUDIO_CHAT_MESSAGES = [];
+const STUDIO_WEBRTC_SIGNALS = [];
+
+if (!code.includes("'/api/chat/messages'")) {
+  app.get('/api/chat/messages', (req, res) => {
+    const room = String(req.query.room || 'general').trim().slice(0, 50) || 'general';
+    const items = STUDIO_CHAT_MESSAGES.filter(m => m.room === room).slice(-50);
+    return res.json({ ok: true, room, count: items.length, messages: items });
+  });
+
+  app.post('/api/chat/messages', (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const room = String(body.room || 'general').trim().slice(0, 50) || 'general';
+    const sender = String(body.sender || 'guest').trim().slice(0, 50) || 'guest';
+    const text = String(body.text || '').trim().slice(0, 500);
+    if (!text) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+    const msg = { id: 'msg_' + Date.now(), room, sender, text, createdAt: Date.now() };
+    STUDIO_CHAT_MESSAGES.push(msg);
+    if (STUDIO_CHAT_MESSAGES.length > 300) STUDIO_CHAT_MESSAGES.shift();
+    return res.json({ ok: true, message: msg });
+  });
+}
+
+if (!code.includes("'/api/webrtc/signal'")) {
+  app.get('/api/webrtc/signal', (req, res) => {
+    const room = String(req.query.room || 'call-room').trim().slice(0, 50) || 'call-room';
+    const signals = STUDIO_WEBRTC_SIGNALS.filter(s => s.room === room).slice(-30);
+    return res.json({ ok: true, room, count: signals.length, signals });
+  });
+
+  app.post('/api/webrtc/signal', (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const room = String(body.room || 'call-room').trim().slice(0, 50) || 'call-room';
+    const from = String(body.from || 'peer-a').trim().slice(0, 50) || 'peer-a';
+    const type = String(body.type || 'offer').trim().slice(0, 30) || 'offer';
+    const payload = body.payload !== undefined ? body.payload : {};
+    const sig = { id: 'sig_' + Date.now(), room, from, type, payload, createdAt: Date.now() };
+    STUDIO_WEBRTC_SIGNALS.push(sig);
+    if (STUDIO_WEBRTC_SIGNALS.length > 200) STUDIO_WEBRTC_SIGNALS.shift();
+    return res.json({ ok: true, signal: sig });
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
