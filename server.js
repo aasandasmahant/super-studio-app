@@ -1,4 +1,5 @@
 const http = require('http');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
@@ -70,6 +71,12 @@ function saveStoreData() {
       webhookEvents: STUDIO_WEBHOOK_EVENTS.slice(-100),
       chatMessages: STUDIO_CHAT_MESSAGES.slice(-200),
       webrtcSignals: STUDIO_WEBRTC_SIGNALS.slice(-100),
+      moderationReports: STUDIO_MODERATION_REPORTS.slice(-500),
+      affiliateClicksList: STUDIO_AFFILIATE_CLICKS_LIST.slice(-500),
+      adEvents: STUDIO_AD_EVENTS.slice(-500),
+      customProducts: STUDIO_CUSTOM_PRODUCTS.slice(-500),
+      productVerdicts: STUDIO_PRODUCT_VERDICTS,
+      callSignalsList: STUDIO_CALL_SIGNALS_LIST.slice(-500),
       updatedAt: Date.now()
     };
     fs.writeFileSync(STORE_FILE, JSON.stringify(payload), 'utf8');
@@ -80,14 +87,14 @@ const RATE_BUCKETS = new Map();
 /* STEP_P3_ADMIN_AUTH_HELPERS */
 function getExpectedAdminSecret() {
   const envSecret = String(process.env.ADMIN_SECRET || '').trim();
-  return envSecret || 'super-studio-owner-dev-key';
+  return envSecret;
 }
 
-function createAdminToken(role = 'owner') {
+function createAdminToken() {
   const token = crypto.randomBytes(24).toString('hex');
   const session = {
     token,
-    role,
+    role: 'owner',
     createdAt: Date.now(),
     expiresAt: Date.now() + 24 * 60 * 60 * 1000
   };
@@ -96,6 +103,12 @@ function createAdminToken(role = 'owner') {
     if (typeof saveStoreData === 'function') saveStoreData();
   }
   return session;
+}
+
+function safeSecretEqual(provided, expected) {
+  const left = Buffer.from(String(provided || ''), 'utf8');
+  const right = Buffer.from(String(expected || ''), 'utf8');
+  return left.length === right.length && left.length > 0 && crypto.timingSafeEqual(left, right);
 }
 
 function verifyAdminRequest(req) {
@@ -107,10 +120,14 @@ function verifyAdminRequest(req) {
     return { ok: false, role: null };
   }
   const session = STUDIO_SESSIONS.get(token);
-  if (!session || Number(session.expiresAt || 0) < Date.now()) {
+  if (!session || Number(session.expiresAt || 0) < Date.now() || session.role !== 'owner') {
+    if (session) {
+      STUDIO_SESSIONS.delete(token);
+      saveStoreData();
+    }
     return { ok: false, role: null };
   }
-  return { ok: true, role: session.role || 'owner' };
+  return { ok: true, role: 'owner' };
 }
 
 /* STEP_P4_PRODUCT_ADAPTER */
@@ -235,23 +252,33 @@ function sendHtml(res, status, html) {
   res.end(html);
 }
 
-function readJsonBody(req) {
-  return new Promise((resolve) => {
-    let raw = '';
+function readRawBody(req, maxBytes = 2 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let total = 0;
     req.on('data', (chunk) => {
-      raw += chunk.toString('utf8');
-      if (raw.length > 2 * 1024 * 1024) req.destroy();
-    });
-    req.on('end', () => {
-      if (!raw) return resolve({});
-      try {
-        resolve(JSON.parse(raw));
-      } catch {
-        resolve({});
+      total += chunk.length;
+      if (total > maxBytes) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
       }
+      chunks.push(chunk);
     });
-    req.on('error', () => resolve({}));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
   });
+}
+
+async function readJsonBody(req) {
+  try {
+    const raw = await readRawBody(req);
+    if (!raw.length) return {};
+    const parsed = JSON.parse(raw.toString('utf8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 const STUDIO_CONTROLS_HTML = `<!doctype html>
@@ -408,13 +435,15 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/admin/login' && method === 'POST') {
     const body = await readJsonBody(req);
-    const providedSecret = String(body.secret || body.password || '').trim();
+    const providedSecret = String(body.secret || body.password || '');
     const expectedSecret = getExpectedAdminSecret();
-    if (!providedSecret || providedSecret !== expectedSecret) {
+    if (!expectedSecret) {
+      return sendJson(res, 503, { ok: false, error: 'Admin login is not configured. Set ADMIN_SECRET in the local environment.' });
+    }
+    if (!safeSecretEqual(providedSecret, expectedSecret)) {
       return sendJson(res, 401, { ok: false, error: 'Invalid admin credentials' });
     }
-    const requestedRole = String(body.role || 'owner').trim() || 'owner';
-    const session = createAdminToken(requestedRole);
+    const session = createAdminToken();
     return sendJson(res, 200, {
       ok: true,
       token: session.token,
@@ -424,8 +453,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/products/catalog' && method === 'GET') {
-    const q = String(urlObj.searchParams.get('q') || '').trim().toLowerCase();
-    const band = String(urlObj.searchParams.get('band') || '').trim().toLowerCase();
+    const q = String(parsedUrl.searchParams.get('q') || '').trim().toLowerCase();
+    const band = String(parsedUrl.searchParams.get('band') || '').trim().toLowerCase();
     let items = STUDIO_CUSTOM_PRODUCTS.slice();
     if (q) {
       items = items.filter((p) =>
@@ -475,7 +504,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/reviews/verdict' && method === 'GET') {
-    const productId = String(urlObj.searchParams.get('productId') || '').trim();
+    const productId = String(parsedUrl.searchParams.get('productId') || '').trim();
     if (productId) {
       const item = STUDIO_PRODUCT_VERDICTS[productId] || null;
       return sendJson(res, 200, { ok: true, productId, verdict: item });
@@ -543,7 +572,7 @@ const server = http.createServer(async (req, res) => {
     if (!auth.ok || !['owner', 'moderator'].includes(auth.role)) {
       return sendJson(res, 403, { ok: false, error: 'Admin or moderator access required' });
     }
-    const status = String(urlObj.searchParams.get('status') || '').trim().toLowerCase();
+    const status = String(parsedUrl.searchParams.get('status') || '').trim().toLowerCase();
     const list = status
       ? STUDIO_MODERATION_REPORTS.filter((r) => String(r.status || '').toLowerCase() === status)
       : STUDIO_MODERATION_REPORTS;
@@ -673,7 +702,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/calls/status' && method === 'GET') {
-    const roomId = String(urlObj.searchParams.get('roomId') || '').trim();
+    const roomId = String(parsedUrl.searchParams.get('roomId') || '').trim();
     const items = roomId
       ? STUDIO_CALL_SIGNALS_LIST.filter((s) => String(s.roomId || '') === roomId)
       : STUDIO_CALL_SIGNALS_LIST.slice(0, 50);
@@ -731,28 +760,51 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/payment/webhook' && method === 'POST') {
     const secret = String(process.env.WEBHOOK_SECRET || '').trim();
-    if (secret) {
-      const sigHeader = String(req.headers['x-webhook-signature'] || '').trim();
-      const rawCheck = JSON.stringify(await readJsonBody(req));
-      const expected = crypto.createHmac('sha256', secret).update(rawCheck).digest('hex');
-      if (!sigHeader || sigHeader !== expected) {
-        return sendJson(res, 401, { ok: false, error: 'Invalid webhook signature' });
-      }
+    if (!secret) {
+      return sendJson(res, 503, { ok: false, error: 'Payment webhook is disabled until WEBHOOK_SECRET is configured.' });
     }
-    if (false) {
-    const body = await readJsonBody(req);
-    const amount = Math.max(0, Number(body.amount || 0) || 0);
+    let rawBody;
+    try {
+      rawBody = await readRawBody(req);
+    } catch {
+      return sendJson(res, 413, { ok: false, error: 'Webhook body is too large or unreadable' });
+    }
+    const signatureHeader = String(req.headers['x-webhook-signature'] || '').trim().replace(/^sha256=/i, '');
+    const expectedSignature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    if (!safeSecretEqual(signatureHeader.toLowerCase(), expectedSignature)) {
+      return sendJson(res, 401, { ok: false, error: 'Invalid webhook signature' });
+    }
+    let body;
+    try {
+      body = JSON.parse(rawBody.toString('utf8'));
+    } catch {
+      return sendJson(res, 400, { ok: false, error: 'Webhook body must be valid JSON' });
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return sendJson(res, 400, { ok: false, error: 'Invalid webhook payload' });
+    }
+    const eventType = String(body.event || body.type || '').trim().slice(0, 60);
+    const orderId = String(body.orderId || body.id || '').trim().slice(0, 100);
+    const amount = Number(body.amount);
+    if (!eventType || !orderId || !Number.isFinite(amount) || amount < 0) {
+      return sendJson(res, 400, { ok: false, error: 'event/type, orderId/id and a non-negative amount are required' });
+    }
+    const duplicate = STUDIO_WEBHOOK_EVENTS.find((item) => item.orderId === orderId && item.eventType === eventType);
+    if (duplicate) {
+      return sendJson(res, 200, { ok: true, duplicate: true, webhook: duplicate, totalEvents: STUDIO_WEBHOOK_EVENTS.length });
+    }
     const entry = {
-      id: 'wh_' + Date.now(),
-      eventType: String(body.event || body.type || 'payment.completed').trim().slice(0, 60),
-      orderId: String(body.orderId || ('ord_' + Date.now())).trim().slice(0, 60),
-      amount,
+      id: 'wh_' + crypto.randomBytes(12).toString('hex'),
+      eventType,
+      orderId,
+      amount: Number(amount.toFixed(2)),
       commission30: Number((amount * 0.30).toFixed(2)),
       receivedAt: Date.now()
     };
-    STUDIO_WEBHOOK_EVENTS.push(entry); saveStoreData();
+    STUDIO_WEBHOOK_EVENTS.push(entry);
+    if (STUDIO_WEBHOOK_EVENTS.length > 500) STUDIO_WEBHOOK_EVENTS.shift();
+    saveStoreData();
     return sendJson(res, 200, { ok: true, webhook: entry, totalEvents: STUDIO_WEBHOOK_EVENTS.length });
-    }
   }
 
   if (pathname === '/api/chat/messages' && method === 'GET') {
