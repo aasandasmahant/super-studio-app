@@ -120,10 +120,14 @@ function verifyAdminRequest(req) {
     return { ok: false, role: null };
   }
   const session = STUDIO_SESSIONS.get(token);
-  if (!session || Number(session.expiresAt || 0) < Date.now()) {
+  if (!session || Number(session.expiresAt || 0) < Date.now() || session.role !== 'owner') {
+    if (session) {
+      STUDIO_SESSIONS.delete(token);
+      saveStoreData();
+    }
     return { ok: false, role: null };
   }
-  return { ok: true, role: session.role || 'owner' };
+  return { ok: true, role: 'owner' };
 }
 
 /* STEP_P4_PRODUCT_ADAPTER */
