@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Studio — Frontend 100%</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <svg viewBox="0 0 36 36" width="32" height="32" aria-hidden="true">
+        <rect width="36" height="36" rx="9" fill="#1d4ed8"/>
+        <path d="M8 22c5-8 14-10 20-7-3 4-5 8-3 12-6-1-12-2-17-5z" fill="#60a5fa"/>
+        <circle cx="22" cy="14" r="2" fill="#ffffff"/>
+      </svg>
+      <div>
+        <div class="brand-title">SUPER STUDIO</div>
+        <div class="brand-sub">Phase 1 • Frontend Blueprint</div>
+      </div>
+    </div>
+    <div class="controls">
+      <select id="langSelect" aria-label="Language Selector">
+        <option value="hi">हिंदी (HI)</option>
+        <option value="en">English (EN)</option>
+      </select>
+      <button type="button" id="themeBtn">🌙</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" id="sidebarNav"></aside>
+    <main class="main-view" id="appView" tabindex="-1"></main>
+  </div>
+  <nav class="bottom-nav" id="bottomNav"></nav>
+  <script src="./app.js"></script>
+</body>
+</html>
