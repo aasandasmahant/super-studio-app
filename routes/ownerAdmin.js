@@ -71,4 +71,20 @@ router.get('/logs', (req, res) => {
   res.json({ ok: true, logs: ownerState.activityLogs.slice(0, 20) });
 });
 
+router.get('/modules', (req, res) => {
+  recordActivity('OWNER_MODULES_VIEWED');
+  const perms = ownerState.permissions || {};
+  res.json({
+    ok: true,
+    modules: {
+      owner: { active: true, locked: true },
+      payments: { active: Boolean(perms.managePayments), locked: true },
+      ads: { active: Boolean(perms.manageAds), locked: true },
+      chat: { active: Boolean(perms.manageChat), locked: true },
+      users: { active: Boolean(perms.manageUsers), locked: true },
+      admins: { active: Boolean(perms.manageAdmins), locked: true }
+    }
+  });
+});
+
 module.exports = router;
