@@ -98,6 +98,7 @@ const server = app.listen(PORT, '127.0.0.1', () => {
 });
 
 if (require.main === module && process.argv.includes('--self-test')) {
+  if (process.argv.includes('--self-test')) {
   setTimeout(async () => {
     try {
       const healthRes = await fetch(`http://127.0.0.1:${PORT}/health`);
@@ -133,4 +134,5 @@ if (require.main === module && process.argv.includes('--self-test')) {
       server.close(() => process.exit(1));
     }
   }, 400);
+}
 }
