@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Studio — Admin Frontend (Stage 8)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --border: #334155;
+    }
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #0284c7;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .layout { display: flex; min-height: 100vh; flex-direction: column; }
+    @media (min-width: 768px) { .layout { flex-direction: row; } }
+    .sidebar {
+      width: 100%;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 16px;
+    }
+    @media (min-width: 768px) {
+      .sidebar { width: 240px; border-bottom: 0; border-right: 1px solid var(--border); }
+    }
+    .brand { font-weight: 700; font-size: 18px; color: var(--accent); margin-bottom: 12px; }
+    .nav-item { display: block; padding: 8px 10px; border-radius: 6px; color: var(--text); text-decoration: none; margin-bottom: 4px; font-size: 14px; }
+    .nav-item:hover { background: rgba(56, 189, 248, 0.12); }
+    .main { flex: 1; padding: 16px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button {
+      background: var(--accent);
+      color: #091322;
+      border: 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .card h3 { margin: 0 0 6px; font-size: 15px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">SUPER STUDIO</div>
+      <a class="nav-item" href="#owner">Stage 3: Owner Admin</a>
+      <a class="nav-item" href="#payments">Stage 4: Payment Admin</a>
+      <a class="nav-item" href="#ads">Stage 5: Advertisement Admin</a>
+      <a class="nav-item" href="#chat">Stage 6: Chat Admin</a>
+      <a class="nav-item" href="#users">Stage 7: User &amp; Support</a>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1 style="margin:0;font-size:20px;">Admin Dashboard</h1>
+          <small id="statusLine" style="color:var(--muted);">Loading modules...</small>
+        </div>
+        <button id="themeToggle" type="button">Toggle Dark/Light</button>
+      </div>
+      <div class="grid">
+        <div class="card" id="owner"><h3>Owner Admin</h3><p id="ownerInfo">Checking...</p></div>
+        <div class="card" id="payments"><h3>Payment Admin</h3><p id="paymentInfo">Checking...</p></div>
+        <div class="card" id="ads"><h3>Advertisement Admin</h3><p id="adInfo">Checking...</p></div>
+        <div class="card" id="chat"><h3>Chat Admin</h3><p id="chatInfo">Checking...</p></div>
+        <div class="card" id="users"><h3>User &amp; Support</h3><p id="userInfo">Checking...</p></div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const toggleBtn = document.getElementById('themeToggle');
+    toggleBtn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+    });
+    async function loadDashboard() {
+      try {
+        const [o, p, a, c, u] = await Promise.all([
+          fetch('/api/owner/overview').then(r => r.json()),
+          fetch('/api/payments/summary').then(r => r.json()),
+          fetch('/api/ads/report').then(r => r.json()),
+          fetch('/api/chat/analytics').then(r => r.json()),
+          fetch('/api/users/summary').then(r => r.json())
+        ]);
+        document.getElementById('ownerInfo').textContent = 'Role: ' + (o.profile?.role || 'owner');
+        document.getElementById('paymentInfo').textContent = 'Txns: ' + (p.totals?.transactionsCount ?? 0);
+        document.getElementById('adInfo').textContent = 'Campaigns: ' + (a.campaignsCount ?? 0);
+        document.getElementById('chatInfo').textContent = 'Rooms: ' + (c.analytics?.roomsCount ?? 0);
+        document.getElementById('userInfo').textContent = 'Users: ' + (u.summary?.usersCount ?? 0);
+        document.getElementById('statusLine').textContent = 'Stage 8 Admin UI Connected';
+      } catch (e) {
+        document.getElementById('statusLine').textContent = 'Dashboard load error';
+      }
+    }
+    loadDashboard();
+  </script>
+</body>
+</html>

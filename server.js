@@ -19,6 +19,22 @@ const defaultDevHash = crypto.createHash('sha256').update('ChangeMe@123456789').
 const adminPasswordHash = rawAdminHash || defaultDevHash;
 
 app.use(express.json({ limit: '1mb' }));
+const ownerAdminRoutes = require('./routes/ownerAdmin');
+app.use('/api/owner', ownerAdminRoutes);
+const paymentAdminRoutes = require('./routes/paymentAdmin');
+app.use('/api/payments', paymentAdminRoutes);
+const adAdminRoutes = require('./routes/adAdmin');
+app.use('/api/ads', adAdminRoutes);
+const chatAdminRoutes = require('./routes/chatAdmin');
+app.use('/api/chat', chatAdminRoutes);
+const userSupportRoutes = require('./routes/userSupport');
+app.use('/api/users', userSupportRoutes);
+const adminFrontendRoutes = require('./routes/adminFrontend');
+app.use('/admin', adminFrontendRoutes);
+const testingSuiteRoutes = require('./routes/testingSuite');
+app.use('/api/testing', testingSuiteRoutes);
+const localhostFinalRoutes = require('./routes/localhostFinal');
+app.use('/api/final', localhostFinalRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -86,6 +102,30 @@ if (require.main === module && process.argv.includes('--self-test')) {
     try {
       const healthRes = await fetch(`http://127.0.0.1:${PORT}/health`);
       const healthData = await healthRes.json();
+      const ownerRes = await fetch(`http://127.0.0.1:${PORT}/api/owner/overview`);
+      const ownerData = await ownerRes.json();
+      console.log('Stage 3 owner overview ok:', ownerData.ok, 'stage:', ownerData.stage);
+      const payRes = await fetch(`http://127.0.0.1:${PORT}/api/payments/summary`);
+      const payData = await payRes.json();
+      console.log('Stage 4 payment summary ok:', payData.ok, 'stage:', payData.stage);
+      const adRes = await fetch(`http://127.0.0.1:${PORT}/api/ads/report`);
+      const adData = await adRes.json();
+      console.log('Stage 5 ad report ok:', adData.ok, 'stage:', adData.stage);
+      const chatRes = await fetch(`http://127.0.0.1:${PORT}/api/chat/analytics`);
+      const chatData = await chatRes.json();
+      console.log('Stage 6 chat analytics ok:', chatData.ok, 'stage:', chatData.stage);
+      const usrRes = await fetch(`http://127.0.0.1:${PORT}/api/users/summary`);
+      const usrData = await usrRes.json();
+      console.log('Stage 7 user support summary ok:', usrData.ok, 'stage:', usrData.stage);
+      const admRes = await fetch(`http://127.0.0.1:${PORT}/admin/meta`);
+      const admData = await admRes.json();
+      console.log('Stage 8 admin frontend ok:', admData.ok, 'stage:', admData.stage);
+      const t9Res = await fetch(`http://127.0.0.1:${PORT}/api/testing/run`);
+      const t9Data = await t9Res.json();
+      console.log('Stage 9 full testing ok:', t9Data.ok, 'stage:', t9Data.stage, 'checks:', t9Data.checks?.length);
+      const f10Res = await fetch(`http://127.0.0.1:${PORT}/api/final/readiness`);
+      const f10Data = await f10Res.json();
+      console.log('Stage 10 localhost final ok:', f10Data.ok, 'stage:', f10Data.stage, 'readyForHosting:', f10Data.localhostFinal?.readyForHosting);
       console.log('Health check:', healthData);
       server.close(() => process.exit(healthRes.ok ? 0 : 1));
     } catch (e) {
