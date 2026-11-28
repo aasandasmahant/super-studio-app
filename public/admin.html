@@ -3,43 +3,89 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Super Studio Admin</title>
+<title>Super Studio Owner Admin</title>
 <style>
-  body{margin:0;font-family:system-ui,sans-serif;background:#0b1117;color:#e6edf3;padding:16px}
-  .card{max-width:680px;margin:0 auto;background:#131c26;border:1px solid #263445;border-radius:10px;padding:16px}
-  h1{margin:0 0 8px;font-size:20px}
-  p{margin:0 0 12px;color:#9fb0c2;font-size:14px}
-  input,button{width:100%;box-sizing:border-box;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #304154;background:#0b1117;color:#e6edf3;font-size:15px}
+  body{margin:0;font-family:system-ui,sans-serif;background:#0b1117;color:#e6edf3;padding:14px}
+  .card{max-width:720px;margin:0 auto 14px;background:#131c26;border:1px solid #263445;border-radius:10px;padding:14px}
+  h1,h2{margin:0 0 8px}
+  h1{font-size:20px}
+  h2{font-size:16px;color:#79c0ff}
+  p{margin:0 0 10px;color:#9fb0c2;font-size:13px}
+  input,select,button{width:100%;box-sizing:border-box;padding:10px;margin-top:7px;border-radius:8px;border:1px solid #304154;background:#0b1117;color:#e6edf3;font-size:14px}
   button{background:#1f6feb;border:none;font-weight:600;cursor:pointer}
-  pre{background:#090d12;padding:12px;border-radius:8px;overflow:auto;font-size:13px;border:1px solid #1e2a38}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px}
+  .chk input{width:auto;margin:0}
+  pre{background:#090d12;padding:12px;border-radius:8px;overflow:auto;font-size:12px;border:1px solid #1e2a38;max-height:320px}
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>Super Studio Admin Panel</h1>
-    <p>लोकल और सर्वर दोनों के लिए हल्का डार्क-मोड एडमिन डैशबोर्ड।</p>
+    <h1>Super Studio Owner Admin Panel</h1>
+    <p>बिना वैध ADMIN_KEY के Owner डेटा और सेटिंग्स तक कोई बाहरी पहुँच नहीं है।</p>
     <input id="adminKey" type="password" placeholder="ADMIN_KEY डालें" />
-    <button onclick="checkPanel()">Status (/admin-panel/status) जाँचें</button>
-    <button onclick="checkMeta()">Meta (/admin/meta) जाँचें</button>
+    <div class="row">
+      <button onclick="callApi('/admin-panel/status','GET')">Panel Status</button>
+      <button onclick="callApi('/admin/meta','GET')">Admin Meta</button>
+    </div>
+    <div class="row">
+      <button onclick="callApi('/api/owner/overview','GET')">Owner Overview</button>
+      <button onclick="callApi('/api/owner/logs','GET')">Owner Logs</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Global Settings (/api/owner/settings)</h2>
+    <label class="chk"><input type="checkbox" id="maintenanceMode" /> Maintenance Mode</label>
+    <label class="chk"><input type="checkbox" id="allowRegistrations" checked /> Allow Registrations</label>
+    <input id="maxLoginAttempts" type="number" min="1" max="20" value="5" placeholder="Max Login Attempts (1-20)" />
+    <button onclick="saveSettings()">Settings Save करें</button>
+  </div>
+
+  <div class="card">
+    <h2>Owner Permissions (/api/owner/permissions)</h2>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="manageAdmins" checked /> manageAdmins</label>
+      <label class="chk"><input type="checkbox" id="managePayments" checked /> managePayments</label>
+      <label class="chk"><input type="checkbox" id="manageAds" checked /> manageAds</label>
+      <label class="chk"><input type="checkbox" id="manageChat" checked /> manageChat</label>
+      <label class="chk"><input type="checkbox" id="manageUsers" checked /> manageUsers</label>
+    </div>
+    <button onclick="savePermissions()">Permissions Save करें</button>
+  </div>
+
+  <div class="card">
+    <h2>Live Output</h2>
     <pre id="out">तैयार है।</pre>
   </div>
+
   <script>
-    async function checkPanel(){
-      const key = document.getElementById('adminKey').value.trim();
-      const out = document.getElementById('out');
-      out.textContent = 'Loading...';
+    function getKey(){ return document.getElementById('adminKey').value.trim(); }
+    function showOut(data){ document.getElementById('out').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); }
+    async function callApi(url, method='GET', body=null){
+      showOut('Loading...');
       try{
-        const r = await fetch('/admin-panel/status', { headers: { 'x-admin-key': key } });
-        out.textContent = JSON.stringify(await r.json(), null, 2);
-      }catch(e){ out.textContent = String(e); }
+        const opts = { method, headers: { 'x-admin-key': getKey() } };
+        if(body){ opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        const res = await fetch(url, opts);
+        showOut(await res.json());
+      }catch(e){ showOut(String(e)); }
     }
-    async function checkMeta(){
-      const out = document.getElementById('out');
-      out.textContent = 'Loading...';
-      try{
-        const r = await fetch('/admin/meta');
-        out.textContent = JSON.stringify(await r.json(), null, 2);
-      }catch(e){ out.textContent = String(e); }
+    function saveSettings(){
+      callApi('/api/owner/settings', 'PATCH', {
+        maintenanceMode: document.getElementById('maintenanceMode').checked,
+        allowRegistrations: document.getElementById('allowRegistrations').checked,
+        maxLoginAttempts: Number(document.getElementById('maxLoginAttempts').value)
+      });
+    }
+    function savePermissions(){
+      callApi('/api/owner/permissions', 'PATCH', {
+        manageAdmins: document.getElementById('manageAdmins').checked,
+        managePayments: document.getElementById('managePayments').checked,
+        manageAds: document.getElementById('manageAds').checked,
+        manageChat: document.getElementById('manageChat').checked,
+        manageUsers: document.getElementById('manageUsers').checked
+      });
     }
   </script>
 </body>
