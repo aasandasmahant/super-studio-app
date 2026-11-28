@@ -31,6 +31,7 @@ const userSupportRoutes = require('./routes/userSupport');
 app.use('/api/users', userSupportRoutes);
 const adminFrontendRoutes = require('./routes/adminFrontend');
 app.use('/admin', adminFrontendRoutes);
+app.use('/admin-panel', require('./routes/admin'));
 const testingSuiteRoutes = require('./routes/testingSuite');
 app.use('/api/testing', testingSuiteRoutes);
 const localhostFinalRoutes = require('./routes/localhostFinal');
